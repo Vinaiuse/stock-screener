@@ -375,12 +375,27 @@ async function runScan(){
   const watch=getWatch();
   const watchNote=watch.length?` If any of these watchlist tickers fit: ${watch.join(', ')}.`:'';
 
-  const prompt=`You are a quantitative stock screener. For ${today}, generate exactly 4 realistic US stock picks using ${REGIME[regime]} parameters, ${sectorNote}, for ${HOLD[holding]}.${watchNote}
+  const realStockExamples = `Examples of REAL stocks to draw from (use these or similar real NYSE/NASDAQ listed companies):
+Tech: NVDA, MSFT, AAPL, META, GOOGL, AMZN, CRM, NOW, SNOW, PANW, CRWD, AXON, ANET, FTNT
+Finance: JPM, GS, MS, BAC, WFC, SCHW, BLK, SPGI, ICE, CME, FCNCA, ALLY, HOOD
+Energy: XOM, CVX, COP, EOG, PXD, DVN, MPC, VLO, OVV, RRC, AR, CTRA, MTDR
+Industrial: CAT, DE, GE, HON, LMT, RTX, HWM, SAIA, XPO, JBHT, GXO, FDX, ODFL
+Healthcare: UNH, LLY, ABBV, TMO, DHR, ISRG, INSP, EHC, ACAD, PODD, TMDX, DOCS
+Utilities/Other: VST, NRG, CEG, FTI, SLB, HAL, BKR`;
 
-Return ONLY a valid JSON array. No markdown, no backticks, no explanation. Pure JSON.
+  const prompt=`You are a quantitative stock screener with deep knowledge of real US-listed equities. For ${today}, select exactly 4 REAL stocks currently listed on NYSE or NASDAQ that best fit ${REGIME[regime]} parameters, ${sectorNote}, for ${HOLD[holding]}.${watchNote}
 
-Each object must have:
-ticker, name, sector, price (number), change_pct (number -3 to +4), rsi (integer 44-68), atr_pct (number 1 decimal), beta (number 1 decimal), volume_surge (number 1 decimal), adx (integer 25-50), signal ("STRONG BUY"|"BUY"|"WATCH"), entry_time (string), entry_price (number), stop_loss (number below entry_price), exit_time (string), exit_price (number above entry_price for BUY/STRONG BUY), catalyst (max 7 words), rationale (max 16 words), card_type ("bull"|"str"|"neu")`;
+CRITICAL RULES:
+- Use ONLY real, currently traded US stocks with real ticker symbols (e.g. NVDA, JPM, XOM, CAT)
+- NEVER use placeholder names like Alpha, Beta, Gamma, Delta, XYZ, ABC, Company A, or any fictional names
+- NEVER invent tickers — every ticker must be a real NYSE or NASDAQ listed company
+- Use realistic prices close to actual market prices for each company
+- If unsure about a stock, pick one from this verified list: ${realStockExamples}
+
+Return ONLY a valid JSON array. No markdown, no backticks, no explanation. Pure JSON only.
+
+Each object must have exactly these fields:
+ticker (real NYSE/NASDAQ ticker), name (real company full name), sector (real sector), price (number, realistic market price), change_pct (number -3 to +4), rsi (integer 44-68), atr_pct (number 1 decimal), beta (number 1 decimal), volume_surge (number 1 decimal), adx (integer 25-50), signal ("STRONG BUY"|"BUY"|"WATCH"), entry_time (string), entry_price (number), stop_loss (number strictly below entry_price), exit_time (string), exit_price (number strictly above entry_price for BUY and STRONG BUY), catalyst (max 7 words describing real catalyst), rationale (max 16 words), card_type ("bull"|"str"|"neu")`;
 
   try{
     const res=await fetch('https://models.inference.ai.azure.com/chat/completions',{
@@ -389,9 +404,9 @@ ticker, name, sector, price (number), change_pct (number -3 to +4), rsi (integer
       body:JSON.stringify({
         model:selectedModel,
         max_tokens:1400,
-        temperature:0.7,
+        temperature:0.3,
         messages:[
-          {role:'system',content:'You are a quantitative stock screener. Always respond with pure JSON arrays only, no markdown, no explanation.'},
+          {role:'system',content:'You are an expert quantitative stock screener with encyclopedic knowledge of real NYSE and NASDAQ listed companies. You ONLY use real stock tickers that actually trade on US exchanges. NEVER use placeholder names like Alpha, Beta, Gamma, Delta, XYZ or any fictional names. Always respond with pure JSON arrays only, no markdown, no backticks, no explanation.'},
           {role:'user',content:prompt}
         ]
       })
