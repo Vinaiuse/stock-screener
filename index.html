@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockScreen — Daily Picks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#080A09;--bg2:#101411;--bg3:#171C18;--bg4:#1F251F;
+    --line:rgba(255,255,255,0.06);--line2:rgba(255,255,255,0.11);
+    --text:#DFE8DF;--muted:#7A8C7A;--dim:#3D4D3D;
+    --green:#56E39F;--gdim:#0E2B1C;--gtxt:#82F4BC;
+    --red:#F2645A;--rdim:#2B0E0E;--rtxt:#F4A09A;
+    --blue:#5AB4F2;--bdim:#0E1E2B;--btxt:#9ACFF4;
+    --amber:#F2C25A;--adim:#2B1E0E;--atxt:#F4D99A;
+    --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;--r:8px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased}
+  body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:200px}
+  .page{position:relative;z-index:1;max-width:940px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+
+  /* header */
+  .hdr{display:grid;grid-template-columns:1fr auto;align-items:start;gap:1rem;margin-bottom:2.5rem;padding-bottom:2rem;border-bottom:1px solid var(--line)}
+  .logo{font-family:var(--sans);font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .logo span{color:var(--green)}
+  .tagline{font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:.1em;text-transform:uppercase}
+  .clock-block{text-align:right}
+  .time{font-family:var(--sans);font-size:28px;font-weight:600;letter-spacing:-.02em;color:var(--text)}
+  .date-str{font-size:11px;color:var(--muted);margin-top:3px}
+  .mkt-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;margin-top:6px;padding:3px 9px;border-radius:20px;border:1px solid var(--line2);color:var(--muted);letter-spacing:.06em}
+  .mkt-badge.open{color:var(--green);border-color:rgba(86,227,159,.2)}
+  .mkt-badge .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+  .mkt-badge.open .dot{animation:blink 1.4s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* setup */
+  .setup-card{background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);padding:20px 20px 16px;margin-bottom:1.5rem}
+  .setup-title{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--green);margin-bottom:14px;letter-spacing:.06em;text-transform:uppercase}
+  .setup-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .step{display:flex;gap:12px;align-items:flex-start}
+  .step-num{background:var(--bg4);border:1px solid var(--line2);border-radius:50%;width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--green);margin-top:1px}
+  .step-text{font-size:12px;color:var(--muted);line-height:1.7}
+  .step-text a{color:var(--green);text-decoration:none;font-weight:700}
+  .step-text a:hover{text-decoration:underline}
+  .step-text code{background:var(--bg4);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--text);font-family:var(--mono)}
+  .key-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .key-row label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+  .key-row input{flex:1;min-width:220px;background:var(--bg3);border:1px solid var(--line);border-radius:5px;padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s}
+  .key-row input:focus{border-color:var(--green)}
+  .key-row input::placeholder{color:var(--dim)}
+  .btn-save{background:var(--bg4);border:1px solid var(--line2);color:var(--text);border-radius:5px;padding:9px 18px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .btn-save:hover{background:var(--bg3)}
+  .key-status{font-size:11px}
+  .key-status.ok{color:var(--green)}
+  .key-status.err{color:var(--red)}
+  .model-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px}
+  .model-row{display:flex;gap:8px;flex-wrap:wrap}
+  .model-btn{background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
+  .model-btn:hover{border-color:var(--line2);color:var(--text)}
+  .model-btn.active{background:var(--gdim);border-color:rgba(86,227,159,.3);color:var(--green)}
+
+  /* controls */
+  .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+  .ctrl{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:10px 13px}
+  .ctrl label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+  .ctrl select{width:100%;background:transparent;border:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);cursor:pointer;outline:none;appearance:none}
+  .ctrl select option{background:#171C18}
+
+  /* buttons */
+  .btn-row{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap}
+  .btn-primary{background:var(--green);color:#060E08;border:none;border-radius:var(--r);padding:11px 24px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;letter-spacing:.02em}
+  .btn-primary:hover{opacity:.88}
+  .btn-primary:active{transform:scale(.98)}
+  .btn-primary:disabled{opacity:.35;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line2);border-radius:var(--r);padding:11px 18px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:background .15s,color .15s}
+  .btn-ghost:hover{background:var(--bg3);color:var(--text)}
+
+  .status{font-size:11px;color:var(--muted);margin-bottom:1rem;min-height:16px;letter-spacing:.04em}
+
+  /* cards */
+  .grid{display:flex;flex-direction:column;gap:12px}
+  .empty{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:3rem 2rem;text-align:center;color:var(--muted);line-height:2}
+  .empty .hint{font-size:11px;color:var(--dim);margin-top:8px}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;border-left:3px solid var(--green);animation:up .35s ease both}
+  .card.str{border-left-color:var(--blue)}
+  .card.neu{border-left-color:var(--amber)}
+  @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  .ticker{font-family:var(--sans);font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .co-name{font-size:12px;color:var(--muted);margin-top:2px}
+  .sec-pill{display:inline-block;font-size:10px;color:var(--dim);background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:2px 8px;margin-top:5px}
+  .price-block{text-align:right}
+  .price-main{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.02em}
+  .price-chg{font-size:12px;margin-top:3px}
+  .pos{color:var(--green)}.neg{color:var(--red)}
+  .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}
+  .met{background:var(--bg3);border-radius:6px;padding:7px 8px}
+  .ml{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+  .mv{font-size:14px;font-weight:700;margin-top:2px;color:var(--text)}
+  .mv.ok{color:var(--green)}.mv.warn{color:var(--amber)}
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+  .lv{background:var(--bg3);border-radius:6px;padding:8px 9px}
+  .lv-l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+  .lv-v{font-size:14px;font-weight:700;margin-top:3px}
+  .lv.en .lv-v{color:var(--green)}.lv.sl .lv-v{color:var(--red)}.lv.tg .lv-v{color:var(--blue)}
+  .ee{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .eebox{border-radius:6px;padding:10px 12px}
+  .eebox.en{background:var(--gdim);border:1px solid rgba(86,227,159,.12)}
+  .eebox.ex{background:var(--rdim);border:1px solid rgba(242,100,90,.12)}
+  .eel{font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  .eebox.en .eel{color:var(--gtxt)}.eebox.ex .eel{color:var(--rtxt)}
+  .eet{font-size:13px;font-weight:700;color:var(--text)}
+  .eed{font-size:11px;margin-top:3px}
+  .eebox.en .eed{color:var(--gtxt);opacity:.8}.eebox.ex .eed{color:var(--rtxt);opacity:.8}
+  .sig-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+  .badge.sb{background:var(--bdim);color:var(--btxt);border:1px solid rgba(90,180,242,.18)}
+  .badge.b{background:var(--gdim);color:var(--gtxt);border:1px solid rgba(86,227,159,.18)}
+  .badge.w{background:var(--adim);color:var(--atxt);border:1px solid rgba(242,194,90,.18)}
+  .rat{font-size:12px;color:var(--muted);flex:1}
+  .cat{font-size:11px;color:var(--dim);background:var(--bg3);padding:3px 9px;border-radius:20px;white-space:nowrap}
+
+  /* loading */
+  .ld-wrap{display:flex;align-items:center;justify-content:center;gap:10px;padding:3rem;color:var(--muted);font-size:12px}
+  .ld{display:flex;gap:5px}
+  .ld span{width:6px;height:6px;border-radius:50%;background:var(--green);animation:ldp 1.2s ease-in-out infinite}
+  .ld span:nth-child(2){animation-delay:.15s}.ld span:nth-child(3){animation-delay:.3s}
+  @keyframes ldp{0%,80%,100%{opacity:.15;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+  /* watchlist */
+  .section-hdr{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin:2.5rem 0 .75rem;display:flex;align-items:center;gap:10px}
+  .section-hdr::after{content:'';flex:1;height:1px;background:var(--line)}
+  .wl-add{display:flex;gap:8px;margin-bottom:1rem}
+  .wl-add input{background:var(--bg3);border:1px solid var(--line);border-radius:5px;padding:7px 11px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;width:130px;text-transform:uppercase;letter-spacing:.08em}
+  .wl-add input:focus{border-color:var(--green)}
+  .wl-add input::placeholder{color:var(--dim);text-transform:none;letter-spacing:0}
+  .wl-add button{background:var(--bg4);border:1px solid var(--line2);color:var(--muted);border-radius:5px;padding:7px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:background .15s}
+  .wl-add button:hover{background:var(--bg3);color:var(--text)}
+  .wl-pills{display:flex;flex-wrap:wrap;gap:6px}
+  .wl-pill{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:4px 10px 4px 13px;font-size:12px;font-weight:700;color:var(--text)}
+  .wl-pill button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:15px;line-height:1;padding:0;transition:color .15s}
+  .wl-pill button:hover{color:var(--red)}
+
+  .disc{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
+
+  @media(max-width:620px){
+    .hdr{grid-template-columns:1fr;gap:.75rem}.clock-block{text-align:left}
+    .controls{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}
+    .levels{grid-template-columns:repeat(3,1fr)}.logo{font-size:24px}.ee{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hdr">
+    <div>
+      <div class="logo">Stock<span>Screen</span></div>
+      <div class="tagline">Quantitative short-term picks · US Equities · GitHub Models</div>
+    </div>
+    <div class="clock-block">
+      <div class="time" id="clk">--:--:--</div>
+      <div class="date-str" id="clk-date"></div>
+      <div class="mkt-badge" id="mkt-badge"><span class="dot"></span><span id="mkt-lbl">--</span></div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <div class="setup-title">⬡ One-time GitHub Setup</div>
+    <div class="setup-steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>
+          → <strong>Generate new token (classic)</strong> → Any name → <strong>No scopes needed</strong> → Generate → Copy token
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          Also enable GitHub Models at <a href="https://github.com/marketplace/models" target="_blank">github.com/marketplace/models</a> — click any model and accept the free access terms.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Paste token below → Save → pick a model → Run scan. Token stays in your browser only.</div>
+      </div>
+    </div>
+    <div class="key-row">
+      <label>GitHub Token</label>
+      <input type="password" id="api-key" placeholder="ghp_... or github_pat_..." autocomplete="off" />
+      <button class="btn-save" onclick="saveKey()">Save</button>
+      <span id="key-st" class="key-status"></span>
+    </div>
+    <div class="model-label">Model (all free)</div>
+    <div class="model-row" id="model-row">
+      <button class="model-btn active" data-model="gpt-4o-mini" onclick="pickModel(this)">GPT-4o mini</button>
+      <button class="model-btn" data-model="gpt-4o" onclick="pickModel(this)">GPT-4o</button>
+      <button class="model-btn" data-model="Meta-Llama-3.1-70B-Instruct" onclick="pickModel(this)">Llama 3.1 70B</button>
+      <button class="model-btn" data-model="Mistral-large" onclick="pickModel(this)">Mistral Large</button>
+      <button class="model-btn" data-model="Phi-4" onclick="pickModel(this)">Phi-4</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>Market regime</label>
+      <select id="regime">
+        <option value="highvol_medrate">High vol + Med rate</option>
+        <option value="lowvol_lowrate">Low vol + Low rate</option>
+        <option value="highvol_highrate">High vol + High rate</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Sector</label>
+      <select id="sector">
+        <option value="all">All sectors</option>
+        <option value="tech">Technology</option>
+        <option value="finance">Financials</option>
+        <option value="energy">Energy</option>
+        <option value="industrial">Industrials</option>
+        <option value="healthcare">Healthcare</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Holding period</label>
+      <select id="holding">
+        <option value="intraday">Intraday (same day)</option>
+        <option value="swing">Swing (2–5 days)</option>
+        <option value="short">Short (1–2 weeks)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="scan-btn" onclick="runScan()">▶ Run today's scan</button>
+    <button class="btn-ghost" onclick="clearGrid()">Clear</button>
+  </div>
+  <div class="status" id="status-bar"></div>
+
+  <div class="grid" id="grid">
+    <div class="empty">
+      Complete the one-time GitHub setup above, then hit <strong>Run today's scan</strong>.<br>
+      <span class="hint">Completely free · No credit card · Token saved locally in your browser</span>
+    </div>
+  </div>
+
+  <div class="section-hdr">Watchlist</div>
+  <div class="wl-add">
+    <input type="text" id="wl-input" placeholder="Add ticker…" maxlength="6" />
+    <button onclick="addWatch()">+ Add</button>
+  </div>
+  <div class="wl-pills" id="wl-pills"></div>
+
+  <div class="disc">
+    ⚠ StockScreen uses GitHub Models AI to simulate quantitative screening logic. It does <strong>not</strong> connect to live market data. All outputs are <strong>educational simulations only</strong> and do not constitute financial advice. Always verify with live data and a licensed financial advisor before trading.
+  </div>
+</div>
+
+<script>
+// clock
+function tick(){
+  const n=new Date();
+  document.getElementById('clk').textContent=n.toLocaleTimeString('en-US',{hour12:false});
+  document.getElementById('clk-date').textContent=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  const day=n.getDay(),m=n.getHours()*60+n.getMinutes();
+  const badge=document.getElementById('mkt-badge'),lbl=document.getElementById('mkt-lbl');
+  const wd=day>=1&&day<=5;
+  if(wd&&m>=570&&m<960){badge.className='mkt-badge open';lbl.textContent='Market open';}
+  else if(wd&&m<570){badge.className='mkt-badge';lbl.textContent='Pre-market';}
+  else if(wd&&m>=960){badge.className='mkt-badge';lbl.textContent='After hours';}
+  else{badge.className='mkt-badge';lbl.textContent='Market closed';}
+}
+setInterval(tick,1000);tick();
+
+// model
+let selectedModel='gpt-4o-mini';
+function pickModel(btn){
+  document.querySelectorAll('.model-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedModel=btn.dataset.model;
+  localStorage.setItem('ss_model',selectedModel);
+}
+
+// key
+const KK='ss_gh_key',PK='ss_prefs',WK='ss_watch';
+function saveKey(){
+  const v=document.getElementById('api-key').value.trim();
+  if(!v.startsWith('ghp_')&&!v.startsWith('github_pat_')&&!v.startsWith('gho_')){
+    showKSt('Must start with ghp_ or github_pat_','err');return;
+  }
+  localStorage.setItem(KK,v);showKSt('Saved ✓','ok');
+}
+function showKSt(msg,type){
+  const el=document.getElementById('key-st');
+  el.textContent=msg;el.className='key-status '+type;
+  setTimeout(()=>{el.textContent='';el.className='key-status';},3500);
+}
+function getKey(){return localStorage.getItem(KK)||document.getElementById('api-key').value.trim();}
+function savePrefs(){
+  localStorage.setItem(PK,JSON.stringify({
+    regime:document.getElementById('regime').value,
+    sector:document.getElementById('sector').value,
+    holding:document.getElementById('holding').value
+  }));
+}
+
+window.onload=()=>{
+  const k=localStorage.getItem(KK);
+  if(k){document.getElementById('api-key').value=k;const el=document.getElementById('key-st');el.textContent='Token loaded ✓';el.className='key-status ok';}
+  const pr=JSON.parse(localStorage.getItem(PK)||'{}');
+  if(pr.regime)document.getElementById('regime').value=pr.regime;
+  if(pr.sector)document.getElementById('sector').value=pr.sector;
+  if(pr.holding)document.getElementById('holding').value=pr.holding;
+  const sm=localStorage.getItem('ss_model');
+  if(sm){selectedModel=sm;document.querySelectorAll('.model-btn').forEach(b=>b.classList.toggle('active',b.dataset.model===sm));}
+  renderWatch();
+};
+
+// watchlist
+function getWatch(){return JSON.parse(localStorage.getItem(WK)||'[]');}
+function saveWatch(l){localStorage.setItem(WK,JSON.stringify(l));}
+function renderWatch(){
+  const pills=document.getElementById('wl-pills'),list=getWatch();
+  if(!list.length){pills.innerHTML='<span style="font-size:12px;color:var(--dim)">No tickers added yet</span>';return;}
+  pills.innerHTML=list.map((t,i)=>`<div class="wl-pill"><span>${t}</span><button onclick="removeWatch(${i})">×</button></div>`).join('');
+}
+function addWatch(){
+  const inp=document.getElementById('wl-input'),t=inp.value.trim().toUpperCase();
+  if(!t)return;const list=getWatch();
+  if(!list.includes(t)){list.push(t);saveWatch(list);renderWatch();}inp.value='';
+}
+function removeWatch(i){const l=getWatch();l.splice(i,1);saveWatch(l);renderWatch();}
+document.getElementById('wl-input').addEventListener('keydown',e=>{if(e.key==='Enter')addWatch();});
+
+// scan
+function setStatus(m){document.getElementById('status-bar').textContent=m;}
+function clearGrid(){document.getElementById('grid').innerHTML='<div class="empty">Cleared. Run a new scan when ready.</div>';setStatus('');}
+
+const REGIME={
+  highvol_medrate:'high volatility + medium interest rate bull market (VIX 18-28, rates 3-6%, RSI 45-65, Beta 1.0-1.5, ATR 4-8%, D/E<1, Fwd P/E<25, mktcap $5B-$20B, stop loss 8-12%)',
+  lowvol_lowrate:'low volatility + low interest rate bull market (VIX<18, rates<2%, RSI 50-70, Beta 1.2-2.0, ATR 2-5%, mktcap $2B-$10B, stop loss 5-8%)',
+  highvol_highrate:'high volatility + high interest rate environment (VIX>28, rates>6%, RSI 40-60, Beta 0.8-1.2, FCF yield>4%, D/E<0.5, P/E<20, stop loss 10-15%)'
+};
+const HOLD={
+  intraday:'intraday same-day trade — entry 9:45-10:30 AM EST, exit 3:00-3:45 PM EST',
+  swing:'swing trade 2-5 days — entry at open or pullback to support, exit at resistance',
+  short:'short-term 1-2 weeks — entry on breakout confirmation, exit at 1.5-2x ATR target'
+};
+
+async function runScan(){
+  const key=getKey();
+  if(!key||(!key.startsWith('ghp_')&&!key.startsWith('github_pat_')&&!key.startsWith('gho_'))){
+    alert('Please enter a valid GitHub personal access token first.');return;
+  }
+  savePrefs();
+  const btn=document.getElementById('scan-btn');
+  btn.disabled=true;btn.textContent='⏳ Scanning...';
+  const grid=document.getElementById('grid');
+  grid.innerHTML='<div class="ld-wrap"><div class="ld"><span></span><span></span><span></span></div><span>Querying GitHub Models…</span></div>';
+  setStatus('');
+
+  const regime=document.getElementById('regime').value;
+  const sector=document.getElementById('sector').value;
+  const holding=document.getElementById('holding').value;
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const sectorNote=sector==='all'?'across all sectors favoured by this regime':`focused on the ${sector} sector`;
+  const watch=getWatch();
+  const watchNote=watch.length?` If any of these watchlist tickers fit: ${watch.join(', ')}.`:'';
+
+  const prompt=`You are a quantitative stock screener. For ${today}, generate exactly 4 realistic US stock picks using ${REGIME[regime]} parameters, ${sectorNote}, for ${HOLD[holding]}.${watchNote}
+
+Return ONLY a valid JSON array. No markdown, no backticks, no explanation. Pure JSON.
+
+Each object must have:
+ticker, name, sector, price (number), change_pct (number -3 to +4), rsi (integer 44-68), atr_pct (number 1 decimal), beta (number 1 decimal), volume_surge (number 1 decimal), adx (integer 25-50), signal ("STRONG BUY"|"BUY"|"WATCH"), entry_time (string), entry_price (number), stop_loss (number below entry_price), exit_time (string), exit_price (number above entry_price for BUY/STRONG BUY), catalyst (max 7 words), rationale (max 16 words), card_type ("bull"|"str"|"neu")`;
+
+  try{
+    const res=await fetch('https://models.inference.ai.azure.com/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({
+        model:selectedModel,
+        max_tokens:1400,
+        temperature:0.7,
+        messages:[
+          {role:'system',content:'You are a quantitative stock screener. Always respond with pure JSON arrays only, no markdown, no explanation.'},
+          {role:'user',content:prompt}
+        ]
+      })
+    });
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||'GitHub Models API error '+res.status);}
+    const data=await res.json();
+    const text=data.choices[0].message.content;
+    const clean=text.replace(/```json|```/g,'').trim();
+    const stocks=JSON.parse(clean);
+    renderCards(stocks);
+    setStatus(`✓ ${stocks.length} picks · ${today} · ${selectedModel}`);
+  }catch(e){
+    grid.innerHTML=`<div class="empty">Error: ${e.message}<br><span class="hint">Check your GitHub token and that you have accepted GitHub Models access.</span></div>`;
+    setStatus('Scan failed.');
+  }
+  btn.disabled=false;btn.textContent='▶ Run today\'s scan';
+}
+
+function renderCards(stocks){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  stocks.forEach((s,i)=>{
+    const pos=s.change_pct>=0;
+    const rr=Math.abs((s.exit_price-s.entry_price)/(s.entry_price-s.stop_loss)).toFixed(1);
+    const pp=(((s.exit_price-s.entry_price)/s.entry_price)*100).toFixed(1);
+    const lp=(((s.entry_price-s.stop_loss)/s.entry_price)*100).toFixed(1);
+    const sc=s.signal==='STRONG BUY'?'sb':s.signal==='BUY'?'b':'w';
+    const rsiC=s.rsi>=60?'warn':'ok';
+    const atrC=s.atr_pct>=7?'warn':'';
+    const card=document.createElement('div');
+    card.className=`card ${s.card_type||'bull'}`;
+    card.style.animationDelay=(i*0.09)+'s';
+    card.innerHTML=`
+      <div class="card-top">
+        <div><div class="ticker">${s.ticker}</div><div class="co-name">${s.name}</div><div class="sec-pill">${s.sector}</div></div>
+        <div class="price-block"><div class="price-main">$${Number(s.price).toFixed(2)}</div><div class="price-chg ${pos?'pos':'neg'}">${pos?'+':''}${Number(s.change_pct).toFixed(2)}% today</div></div>
+      </div>
+      <div class="metrics">
+        <div class="met"><div class="ml">RSI</div><div class="mv ${rsiC}">${s.rsi}</div></div>
+        <div class="met"><div class="ml">ATR</div><div class="mv ${atrC}">${s.atr_pct}%</div></div>
+        <div class="met"><div class="ml">Beta</div><div class="mv">${s.beta}</div></div>
+        <div class="met"><div class="ml">Vol surge</div><div class="mv">${s.volume_surge}×</div></div>
+        <div class="met"><div class="ml">ADX</div><div class="mv">${s.adx}</div></div>
+      </div>
+      <div class="levels">
+        <div class="lv en"><div class="lv-l">Entry</div><div class="lv-v">$${Number(s.entry_price).toFixed(2)}</div></div>
+        <div class="lv sl"><div class="lv-l">Stop loss</div><div class="lv-v">$${Number(s.stop_loss).toFixed(2)}</div></div>
+        <div class="lv tg"><div class="lv-l">Target</div><div class="lv-v">$${Number(s.exit_price).toFixed(2)}</div></div>
+      </div>
+      <div class="ee">
+        <div class="eebox en"><div class="eel">Entry</div><div class="eet">${s.entry_time} · $${Number(s.entry_price).toFixed(2)}</div><div class="eed">Stop $${Number(s.stop_loss).toFixed(2)} (−${lp}%)</div></div>
+        <div class="eebox ex"><div class="eel">Exit target</div><div class="eet">${s.exit_time} · $${Number(s.exit_price).toFixed(2)}</div><div class="eed">+${pp}% · R/R ${rr}:1</div></div>
+      </div>
+      <div class="sig-row">
+        <span class="badge ${sc}">${s.signal}</span>
+        <span class="rat">${s.rationale}</span>
+        <span class="cat">⚡ ${s.catalyst}</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+</script>
+</body>
+</html>
