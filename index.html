@@ -469,8 +469,9 @@ async function fetchHistorical(ticker,days=60){
   try{
     const end=Math.floor(Date.now()/1000);
     const start=end-(days*24*60*60);
-    const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${start}&period2=${end}`)}`;
-    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    const cb=Date.now();
+    const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${start}&period2=${end}&_cb=${cb}`)}`;
+    const res=await fetch(url,{cache:'no-store',headers:{'Accept':'application/json','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache'}});
     if(!res.ok)return null;
     const data=await res.json();
     const result=data?.chart?.result?.[0];
@@ -498,7 +499,8 @@ async function fetchHistorical(ticker,days=60){
       high52:Number((meta.fiftyTwoWeekHigh||Math.max(...closes)).toFixed(2)),
       low52:Number((meta.fiftyTwoWeekLow||Math.min(...closes)).toFixed(2)),
       closes,highs,lows,
-      currency:meta.currency||'USD'
+      currency:meta.currency||'USD',
+      fetchedAt:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
     };
   }catch(e){return null;}
 }
@@ -645,6 +647,7 @@ Each object: {
       entry_price:entry,
       stop_loss:stop,
       exit_price:target,
+      fetchedAt:hist.fetchedAt,
       live:true
     };
   }));
@@ -654,7 +657,8 @@ Each object: {
   // ── STEP 4: Render ──
   renderCards(enriched);
   const liveCount=enriched.filter(s=>s.live).length;
-  setStatus(`✓ ${enriched.length} picks · ${liveCount}/${enriched.length} real data · ${today} · ${selectedModel}`);
+  const scanTime=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  setStatus(`✓ ${enriched.length} picks · ${liveCount}/${enriched.length} live · Last scan: ${scanTime} EST · ${selectedModel}`);
   btn.disabled=false;btn.textContent='▶ Run today\'s scan';
 }
 
@@ -691,8 +695,9 @@ function renderCards(stocks){
     const betaV=s.beta!=null?s.beta:'—';
     const betaC=s.beta!=null?(s.beta>2?'warn':'ok'):'';
 
+    const fetchTime=s.fetchedAt||'';
     const liveTagHtml=s.live
-      ?'<div class="live-tag live">● LIVE DATA</div>'
+      ?`<div class="live-tag live">● LIVE · ${fetchTime} EST</div>`
       :'<div class="live-tag warn">⚠ DATA UNAVAILABLE</div>';
 
     const liveStatsHtml=s.live?`
