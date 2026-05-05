@@ -23,10 +23,10 @@
   body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-events:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size:200px}
-  .page{position:relative;z-index:1;max-width:940px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+  .page{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
 
   /* header */
-  .hdr{display:grid;grid-template-columns:1fr auto;align-items:start;gap:1rem;margin-bottom:2.5rem;padding-bottom:2rem;border-bottom:1px solid var(--line)}
+  .hdr{display:grid;grid-template-columns:1fr auto;align-items:start;gap:1rem;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--line)}
   .logo{font-family:var(--sans);font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1}
   .logo span{color:var(--green)}
   .tagline{font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:.1em;text-transform:uppercase}
@@ -39,7 +39,16 @@
   .mkt-badge.open .dot{animation:blink 1.4s ease-in-out infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-  /* setup */
+  /* data source pills */
+  .data-row{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+  .data-pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--line2);color:var(--muted)}
+  .data-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+  .data-pill.live{color:var(--green);border-color:rgba(86,227,159,.25)}
+  .data-pill.live .dot{background:var(--green);animation:blink 1.4s ease-in-out infinite}
+  .data-pill.ai{color:var(--blue);border-color:rgba(90,180,242,.25)}
+  .data-pill.ai .dot{background:var(--blue)}
+
+  /* setup card */
   .setup-card{background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);padding:20px 20px 16px;margin-bottom:1.5rem}
   .setup-title{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--green);margin-bottom:14px;letter-spacing:.06em;text-transform:uppercase}
   .setup-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
@@ -48,17 +57,14 @@
   .step-text{font-size:12px;color:var(--muted);line-height:1.7}
   .step-text a{color:var(--green);text-decoration:none;font-weight:700}
   .step-text a:hover{text-decoration:underline}
-  .step-text code{background:var(--bg4);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--text);font-family:var(--mono)}
   .key-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .key-row label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
   .key-row input{flex:1;min-width:220px;background:var(--bg3);border:1px solid var(--line);border-radius:5px;padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s}
   .key-row input:focus{border-color:var(--green)}
   .key-row input::placeholder{color:var(--dim)}
-  .btn-save{background:var(--bg4);border:1px solid var(--line2);color:var(--text);border-radius:5px;padding:9px 18px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .btn-save{background:var(--bg4);border:1px solid var(--line2);color:var(--text);border-radius:5px;padding:9px 18px;font-family:var(--mono);font-size:12px;cursor:pointer;white-space:nowrap}
   .btn-save:hover{background:var(--bg3)}
-  .key-status{font-size:11px}
-  .key-status.ok{color:var(--green)}
-  .key-status.err{color:var(--red)}
+  .key-status{font-size:11px}.key-status.ok{color:var(--green)}.key-status.err{color:var(--red)}
   .model-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px}
   .model-row{display:flex;gap:8px;flex-wrap:wrap}
   .model-btn{background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
@@ -74,41 +80,65 @@
 
   /* buttons */
   .btn-row{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap}
-  .btn-primary{background:var(--green);color:#060E08;border:none;border-radius:var(--r);padding:11px 24px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;letter-spacing:.02em}
-  .btn-primary:hover{opacity:.88}
-  .btn-primary:active{transform:scale(.98)}
-  .btn-primary:disabled{opacity:.35;cursor:not-allowed}
+  .btn-primary{background:var(--green);color:#060E08;border:none;border-radius:var(--r);padding:11px 24px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+  .btn-primary:hover{opacity:.88}.btn-primary:active{transform:scale(.98)}.btn-primary:disabled{opacity:.35;cursor:not-allowed}
   .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line2);border-radius:var(--r);padding:11px 18px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:background .15s,color .15s}
   .btn-ghost:hover{background:var(--bg3);color:var(--text)}
 
   .status{font-size:11px;color:var(--muted);margin-bottom:1rem;min-height:16px;letter-spacing:.04em}
 
   /* cards */
-  .grid{display:flex;flex-direction:column;gap:12px}
+  .grid{display:flex;flex-direction:column;gap:14px}
   .empty{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:3rem 2rem;text-align:center;color:var(--muted);line-height:2}
   .empty .hint{font-size:11px;color:var(--dim);margin-top:8px}
   .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;border-left:3px solid var(--green);animation:up .35s ease both}
-  .card.str{border-left-color:var(--blue)}
-  .card.neu{border-left-color:var(--amber)}
+  .card.str{border-left-color:var(--blue)}.card.neu{border-left-color:var(--amber)}
   @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
   .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
   .ticker{font-family:var(--sans);font-size:22px;font-weight:800;letter-spacing:-.02em}
   .co-name{font-size:12px;color:var(--muted);margin-top:2px}
   .sec-pill{display:inline-block;font-size:10px;color:var(--dim);background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:2px 8px;margin-top:5px}
   .price-block{text-align:right}
   .price-main{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.02em}
-  .price-chg{font-size:12px;margin-top:3px}
+  .live-tag{font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+  .live-tag.live{color:var(--green)}
+  .live-tag.warn{color:var(--amber)}
+  .price-chg{font-size:12px;margin-top:2px}
   .pos{color:var(--green)}.neg{color:var(--red)}
+
+  /* real indicators section */
+  .indicators-hdr{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .indicators-hdr::after{content:'';flex:1;height:1px;background:var(--line)}
+  .ind-tag{font-size:9px;padding:1px 7px;border-radius:20px;font-weight:700}
+  .ind-tag.real{background:var(--gdim);color:var(--gtxt);border:1px solid rgba(86,227,159,.2)}
+  .ind-tag.est{background:var(--adim);color:var(--atxt);border:1px solid rgba(242,194,90,.2)}
+
   .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}
-  .met{background:var(--bg3);border-radius:6px;padding:7px 8px}
+  .met{border-radius:6px;padding:7px 8px}
+  .met.real-met{background:var(--gdim);border:1px solid rgba(86,227,159,.12)}
+  .met.est-met{background:var(--bg3)}
   .ml{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+  .met.real-met .ml{color:rgba(86,227,159,.5)}
   .mv{font-size:14px;font-weight:700;margin-top:2px;color:var(--text)}
-  .mv.ok{color:var(--green)}.mv.warn{color:var(--amber)}
+  .mv.ok{color:var(--green)}.mv.warn{color:var(--amber)}.mv.danger{color:var(--red)}
+  .msrc{font-size:8px;margin-top:1px;color:var(--dim)}
+  .met.real-met .msrc{color:rgba(86,227,159,.4)}
+
+  /* live stats row */
+  .live-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+  .ls{background:var(--bg3);border-radius:6px;padding:6px 9px}
+  .ls-l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+  .ls-v{font-size:13px;font-weight:700;color:var(--text);margin-top:2px}
+
+  /* levels */
   .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
   .lv{background:var(--bg3);border-radius:6px;padding:8px 9px}
   .lv-l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
   .lv-v{font-size:14px;font-weight:700;margin-top:3px}
   .lv.en .lv-v{color:var(--green)}.lv.sl .lv-v{color:var(--red)}.lv.tg .lv-v{color:var(--blue)}
+
+  /* entry exit boxes */
   .ee{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
   .eebox{border-radius:6px;padding:10px 12px}
   .eebox.en{background:var(--gdim);border:1px solid rgba(86,227,159,.12)}
@@ -118,6 +148,8 @@
   .eet{font-size:13px;font-weight:700;color:var(--text)}
   .eed{font-size:11px;margin-top:3px}
   .eebox.en .eed{color:var(--gtxt);opacity:.8}.eebox.ex .eed{color:var(--rtxt);opacity:.8}
+
+  /* signal row */
   .sig-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
   .badge.sb{background:var(--bdim);color:var(--btxt);border:1px solid rgba(90,180,242,.18)}
@@ -125,13 +157,19 @@
   .badge.w{background:var(--adim);color:var(--atxt);border:1px solid rgba(242,194,90,.18)}
   .rat{font-size:12px;color:var(--muted);flex:1}
   .cat{font-size:11px;color:var(--dim);background:var(--bg3);padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .tv-btn{font-size:11px;background:transparent;border:1px solid var(--line2);border-radius:20px;padding:3px 10px;cursor:pointer;color:var(--muted);font-family:var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .tv-btn:hover{background:var(--bg3);color:var(--text)}
 
   /* loading */
-  .ld-wrap{display:flex;align-items:center;justify-content:center;gap:10px;padding:3rem;color:var(--muted);font-size:12px}
+  .ld-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:3rem;color:var(--muted);font-size:12px}
   .ld{display:flex;gap:5px}
   .ld span{width:6px;height:6px;border-radius:50%;background:var(--green);animation:ldp 1.2s ease-in-out infinite}
   .ld span:nth-child(2){animation-delay:.15s}.ld span:nth-child(3){animation-delay:.3s}
   @keyframes ldp{0%,80%,100%{opacity:.15;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+  .ld-steps{display:flex;flex-direction:column;gap:4px;text-align:center}
+  .ld-step{font-size:11px;color:var(--dim);transition:color .3s}
+  .ld-step.active{color:var(--green)}
+  .ld-step.done{color:var(--muted)}
 
   /* watchlist */
   .section-hdr{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin:2.5rem 0 .75rem;display:flex;align-items:center;gap:10px}
@@ -140,20 +178,22 @@
   .wl-add input{background:var(--bg3);border:1px solid var(--line);border-radius:5px;padding:7px 11px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;width:130px;text-transform:uppercase;letter-spacing:.08em}
   .wl-add input:focus{border-color:var(--green)}
   .wl-add input::placeholder{color:var(--dim);text-transform:none;letter-spacing:0}
-  .wl-add button{background:var(--bg4);border:1px solid var(--line2);color:var(--muted);border-radius:5px;padding:7px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:background .15s}
+  .wl-add button{background:var(--bg4);border:1px solid var(--line2);color:var(--muted);border-radius:5px;padding:7px 14px;font-family:var(--mono);font-size:12px;cursor:pointer}
   .wl-add button:hover{background:var(--bg3);color:var(--text)}
   .wl-pills{display:flex;flex-wrap:wrap;gap:6px}
   .wl-pill{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:4px 10px 4px 13px;font-size:12px;font-weight:700;color:var(--text)}
-  .wl-pill button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:15px;line-height:1;padding:0;transition:color .15s}
+  .wl-pill button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:15px;line-height:1;padding:0}
   .wl-pill button:hover{color:var(--red)}
 
   .disc{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
+
   ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
 
-  @media(max-width:620px){
-    .hdr{grid-template-columns:1fr;gap:.75rem}.clock-block{text-align:left}
+  @media(max-width:640px){
+    .hdr{grid-template-columns:1fr}.clock-block{text-align:left}
     .controls{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}
-    .levels{grid-template-columns:repeat(3,1fr)}.logo{font-size:24px}.ee{grid-template-columns:1fr}
+    .levels{grid-template-columns:repeat(3,1fr)}.ee{grid-template-columns:1fr}
+    .live-stats{grid-template-columns:repeat(2,1fr)}.logo{font-size:24px}
   }
 </style>
 </head>
@@ -163,7 +203,7 @@
   <div class="hdr">
     <div>
       <div class="logo">Stock<span>Screen</span></div>
-      <div class="tagline">Quantitative short-term picks · US Equities · GitHub Models</div>
+      <div class="tagline">Real RSI · Real ATR · Real ADX · Real Beta · Live Prices</div>
     </div>
     <div class="clock-block">
       <div class="time" id="clk">--:--:--</div>
@@ -172,40 +212,35 @@
     </div>
   </div>
 
+  <div class="data-row">
+    <div class="data-pill live"><span class="dot"></span>Price · RSI · ATR · ADX · Beta — Yahoo Finance (real)</div>
+    <div class="data-pill ai"><span class="dot"></span>Stock selection · Entry/Exit timing · Catalyst — GitHub Models AI</div>
+  </div>
+
   <div class="setup-card">
-    <div class="setup-title">⬡ One-time GitHub Setup</div>
+    <div class="setup-title">⬡ GitHub Setup — One Time Only</div>
     <div class="setup-steps">
       <div class="step">
         <div class="step-num">1</div>
-        <div class="step-text">
-          Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>
-          → <strong>Generate new token (classic)</strong> → Any name → <strong>No scopes needed</strong> → Generate → Copy token
-        </div>
+        <div class="step-text">Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a> → <strong>Generate new token (classic)</strong> → any name → check ✅ <strong>models</strong> scope → Generate → Copy</div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
-        <div class="step-text">
-          Also enable GitHub Models at <a href="https://github.com/marketplace/models" target="_blank">github.com/marketplace/models</a> — click any model and accept the free access terms.
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-text">Paste token below → Save → pick a model → Run scan. Token stays in your browser only.</div>
+        <div class="step-text">Paste below → Save → pick model → Run scan. Token stored in your browser only.</div>
       </div>
     </div>
     <div class="key-row">
       <label>GitHub Token</label>
-      <input type="password" id="api-key" placeholder="ghp_... or github_pat_..." autocomplete="off" />
+      <input type="password" id="api-key" placeholder="ghp_..." autocomplete="off"/>
       <button class="btn-save" onclick="saveKey()">Save</button>
       <span id="key-st" class="key-status"></span>
     </div>
-    <div class="model-label">Model (all free)</div>
-    <div class="model-row" id="model-row">
-      <button class="model-btn active" data-model="gpt-4o-mini" onclick="pickModel(this)">GPT-4o mini</button>
-      <button class="model-btn" data-model="gpt-4o" onclick="pickModel(this)">GPT-4o</button>
-      <button class="model-btn" data-model="Meta-Llama-3.1-70B-Instruct" onclick="pickModel(this)">Llama 3.1 70B</button>
-      <button class="model-btn" data-model="Mistral-large" onclick="pickModel(this)">Mistral Large</button>
-      <button class="model-btn" data-model="Phi-4" onclick="pickModel(this)">Phi-4</button>
+    <div class="model-label">AI Model — stock selection &amp; reasoning only</div>
+    <div class="model-row">
+      <button class="model-btn active" data-model="openai/gpt-4o-mini" onclick="pickModel(this)">GPT-4o mini</button>
+      <button class="model-btn" data-model="openai/gpt-4o" onclick="pickModel(this)">GPT-4o</button>
+      <button class="model-btn" data-model="meta/meta-llama-3.1-70b-instruct" onclick="pickModel(this)">Llama 3.1 70B</button>
+      <button class="model-btn" data-model="mistral-ai/mistral-large-2411" onclick="pickModel(this)">Mistral Large</button>
     </div>
   </div>
 
@@ -247,32 +282,31 @@
 
   <div class="grid" id="grid">
     <div class="empty">
-      Complete the one-time GitHub setup above, then hit <strong>Run today's scan</strong>.<br>
-      <span class="hint">Completely free · No credit card · Token saved locally in your browser</span>
+      Enter your GitHub token and hit <strong>▶ Run today's scan</strong>.<br>
+      <span class="hint">RSI · ATR · ADX · Beta all calculated from 30 days of real Yahoo Finance data · No extra accounts needed</span>
     </div>
   </div>
 
   <div class="section-hdr">Watchlist</div>
   <div class="wl-add">
-    <input type="text" id="wl-input" placeholder="Add ticker…" maxlength="6" />
+    <input type="text" id="wl-input" placeholder="Add ticker…" maxlength="6"/>
     <button onclick="addWatch()">+ Add</button>
   </div>
   <div class="wl-pills" id="wl-pills"></div>
 
   <div class="disc">
-    ⚠ StockScreen uses GitHub Models AI to simulate quantitative screening logic. It does <strong>not</strong> connect to live market data. All outputs are <strong>educational simulations only</strong> and do not constitute financial advice. Always verify with live data and a licensed financial advisor before trading.
+    ⚠ <strong>Price, RSI, ATR, ADX and Beta</strong> are calculated from Yahoo Finance historical data (unofficial feed, no API key). <strong>Stock selection, entry/exit timing and catalysts</strong> are AI-generated via GitHub Models. This tool is for <strong>educational purposes only</strong> and does not constitute financial advice. Always verify with a licensed broker before trading. Past indicator values do not guarantee future performance.
   </div>
 </div>
 
 <script>
-// clock
+// ── Clock ──────────────────────────────────────────────────────────────────
 function tick(){
   const n=new Date();
   document.getElementById('clk').textContent=n.toLocaleTimeString('en-US',{hour12:false});
   document.getElementById('clk-date').textContent=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-  const day=n.getDay(),m=n.getHours()*60+n.getMinutes();
+  const day=n.getDay(),m=n.getHours()*60+n.getMinutes(),wd=day>=1&&day<=5;
   const badge=document.getElementById('mkt-badge'),lbl=document.getElementById('mkt-lbl');
-  const wd=day>=1&&day<=5;
   if(wd&&m>=570&&m<960){badge.className='mkt-badge open';lbl.textContent='Market open';}
   else if(wd&&m<570){badge.className='mkt-badge';lbl.textContent='Pre-market';}
   else if(wd&&m>=960){badge.className='mkt-badge';lbl.textContent='After hours';}
@@ -280,17 +314,16 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-// model
-let selectedModel='gpt-4o-mini';
+// ── Model / persist ────────────────────────────────────────────────────────
+let selectedModel='openai/gpt-4o-mini';
 function pickModel(btn){
   document.querySelectorAll('.model-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  selectedModel=btn.dataset.model;
+  btn.classList.add('active');selectedModel=btn.dataset.model;
   localStorage.setItem('ss_model',selectedModel);
 }
 
-// key
-const KK='ss_gh_key',PK='ss_prefs',WK='ss_watch';
+const KK='ss_gh_key2',PK='ss_prefs2',WK='ss_watch2';
+
 function saveKey(){
   const v=document.getElementById('api-key').value.trim();
   if(!v.startsWith('ghp_')&&!v.startsWith('github_pat_')&&!v.startsWith('gho_')){
@@ -314,7 +347,7 @@ function savePrefs(){
 
 window.onload=()=>{
   const k=localStorage.getItem(KK);
-  if(k){document.getElementById('api-key').value=k;const el=document.getElementById('key-st');el.textContent='Token loaded ✓';el.className='key-status ok';}
+  if(k){document.getElementById('api-key').value=k;showKSt('Token loaded ✓','ok');}
   const pr=JSON.parse(localStorage.getItem(PK)||'{}');
   if(pr.regime)document.getElementById('regime').value=pr.regime;
   if(pr.sector)document.getElementById('sector').value=pr.sector;
@@ -324,7 +357,7 @@ window.onload=()=>{
   renderWatch();
 };
 
-// watchlist
+// ── Watchlist ──────────────────────────────────────────────────────────────
 function getWatch(){return JSON.parse(localStorage.getItem(WK)||'[]');}
 function saveWatch(l){localStorage.setItem(WK,JSON.stringify(l));}
 function renderWatch(){
@@ -340,32 +373,184 @@ function addWatch(){
 function removeWatch(i){const l=getWatch();l.splice(i,1);saveWatch(l);renderWatch();}
 document.getElementById('wl-input').addEventListener('keydown',e=>{if(e.key==='Enter')addWatch();});
 
-// scan
+// ── REAL INDICATOR CALCULATIONS ────────────────────────────────────────────
+
+// RSI — Wilder smoothing, 14 periods
+function calcRSI(closes,period=14){
+  if(closes.length<period+1)return null;
+  let gains=0,losses=0;
+  for(let i=1;i<=period;i++){
+    const d=closes[i]-closes[i-1];
+    if(d>0)gains+=d;else losses+=Math.abs(d);
+  }
+  let avgGain=gains/period,avgLoss=losses/period;
+  for(let i=period+1;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    avgGain=(avgGain*(period-1)+(d>0?d:0))/period;
+    avgLoss=(avgLoss*(period-1)+(d<0?Math.abs(d):0))/period;
+  }
+  if(avgLoss===0)return 100;
+  const rs=avgGain/avgLoss;
+  return Math.round(100-(100/(1+rs)));
+}
+
+// ATR — True Range, 14 period simple average, returned as % of close
+function calcATR(highs,lows,closes,period=14){
+  if(highs.length<period+1)return null;
+  const trs=[];
+  for(let i=1;i<highs.length;i++){
+    const hl=highs[i]-lows[i];
+    const hpc=Math.abs(highs[i]-closes[i-1]);
+    const lpc=Math.abs(lows[i]-closes[i-1]);
+    trs.push(Math.max(hl,hpc,lpc));
+  }
+  const recent=trs.slice(-period);
+  const atr=recent.reduce((a,b)=>a+b,0)/period;
+  const lastClose=closes[closes.length-1];
+  return Number(((atr/lastClose)*100).toFixed(1));
+}
+
+// ADX — 14 period
+function calcADX(highs,lows,closes,period=14){
+  if(highs.length<period*2)return null;
+  const trs=[],plusDMs=[],minusDMs=[];
+  for(let i=1;i<highs.length;i++){
+    const hl=highs[i]-lows[i];
+    const hpc=Math.abs(highs[i]-closes[i-1]);
+    const lpc=Math.abs(lows[i]-closes[i-1]);
+    trs.push(Math.max(hl,hpc,lpc));
+    const upMove=highs[i]-highs[i-1];
+    const downMove=lows[i-1]-lows[i];
+    plusDMs.push(upMove>downMove&&upMove>0?upMove:0);
+    minusDMs.push(downMove>upMove&&downMove>0?downMove:0);
+  }
+  // smooth
+  let smTR=trs.slice(0,period).reduce((a,b)=>a+b,0);
+  let smPlus=plusDMs.slice(0,period).reduce((a,b)=>a+b,0);
+  let smMinus=minusDMs.slice(0,period).reduce((a,b)=>a+b,0);
+  const dxArr=[];
+  for(let i=period;i<trs.length;i++){
+    smTR=smTR-smTR/period+trs[i];
+    smPlus=smPlus-smPlus/period+plusDMs[i];
+    smMinus=smMinus-smMinus/period+minusDMs[i];
+    const pdi=smTR>0?(smPlus/smTR)*100:0;
+    const mdi=smTR>0?(smMinus/smTR)*100:0;
+    const dxDen=pdi+mdi;
+    dxArr.push(dxDen>0?Math.abs(pdi-mdi)/dxDen*100:0);
+  }
+  const adx=dxArr.slice(-period).reduce((a,b)=>a+b,0)/period;
+  return Math.round(adx);
+}
+
+// Beta vs SPY — 30 day daily returns covariance/variance
+function calcBeta(stockCloses,spyCloses){
+  const n=Math.min(stockCloses.length,spyCloses.length)-1;
+  if(n<10)return null;
+  const sRet=[],mRet=[];
+  for(let i=1;i<=n;i++){
+    sRet.push((stockCloses[i]-stockCloses[i-1])/stockCloses[i-1]);
+    mRet.push((spyCloses[i]-spyCloses[i-1])/spyCloses[i-1]);
+  }
+  const mMean=mRet.reduce((a,b)=>a+b,0)/n;
+  const sMean=sRet.reduce((a,b)=>a+b,0)/n;
+  let cov=0,mVar=0;
+  for(let i=0;i<n;i++){
+    cov+=(sRet[i]-sMean)*(mRet[i]-mMean);
+    mVar+=Math.pow(mRet[i]-mMean,2);
+  }
+  if(mVar===0)return null;
+  return Number((cov/mVar).toFixed(1));
+}
+
+// ── Yahoo Finance historical data fetch ─────────────────────────────────────
+const CORS='https://corsproxy.io/?';
+
+async function fetchHistorical(ticker,days=60){
+  try{
+    const end=Math.floor(Date.now()/1000);
+    const start=end-(days*24*60*60);
+    const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${start}&period2=${end}`)}`;
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)return null;
+    const data=await res.json();
+    const result=data?.chart?.result?.[0];
+    if(!result)return null;
+    const meta=result.meta;
+    const quotes=result.indicators?.quote?.[0];
+    const timestamps=result.timestamp||[];
+    if(!quotes||!timestamps.length)return null;
+    // filter nulls
+    const closes=[],highs=[],lows=[],volumes=[];
+    timestamps.forEach((_,i)=>{
+      const c=quotes.close?.[i],h=quotes.high?.[i],l=quotes.low?.[i],v=quotes.volume?.[i];
+      if(c&&h&&l){closes.push(c);highs.push(h);lows.push(l);volumes.push(v||0);}
+    });
+    if(closes.length<15)return null;
+    const price=meta.regularMarketPrice||closes[closes.length-1];
+    const prev=meta.previousClose||closes[closes.length-2];
+    const change_pct=prev?((price-prev)/prev*100):0;
+    const avgVol=meta.averageDailyVolume3Month||meta.averageDailyVolume10Day||1;
+    const todayVol=meta.regularMarketVolume||volumes[volumes.length-1]||0;
+    return{
+      price:Number(price.toFixed(2)),
+      change_pct:Number(change_pct.toFixed(2)),
+      volume_surge:Number(Math.min(todayVol/avgVol,9.9).toFixed(1)),
+      high52:Number((meta.fiftyTwoWeekHigh||Math.max(...closes)).toFixed(2)),
+      low52:Number((meta.fiftyTwoWeekLow||Math.min(...closes)).toFixed(2)),
+      closes,highs,lows,
+      currency:meta.currency||'USD'
+    };
+  }catch(e){return null;}
+}
+
+// ── Main scan ──────────────────────────────────────────────────────────────
 function setStatus(m){document.getElementById('status-bar').textContent=m;}
 function clearGrid(){document.getElementById('grid').innerHTML='<div class="empty">Cleared. Run a new scan when ready.</div>';setStatus('');}
 
 const REGIME={
-  highvol_medrate:'high volatility + medium interest rate bull market (VIX 18-28, rates 3-6%, RSI 45-65, Beta 1.0-1.5, ATR 4-8%, D/E<1, Fwd P/E<25, mktcap $5B-$20B, stop loss 8-12%)',
-  lowvol_lowrate:'low volatility + low interest rate bull market (VIX<18, rates<2%, RSI 50-70, Beta 1.2-2.0, ATR 2-5%, mktcap $2B-$10B, stop loss 5-8%)',
-  highvol_highrate:'high volatility + high interest rate environment (VIX>28, rates>6%, RSI 40-60, Beta 0.8-1.2, FCF yield>4%, D/E<0.5, P/E<20, stop loss 10-15%)'
+  highvol_medrate:'high volatility + medium interest rate bull market (VIX 18-28, rates 3-6%, ideal RSI 45-65, Beta 1.0-1.5, ATR 4-8%, D/E<1, Fwd P/E<25, mktcap $5B-$20B)',
+  lowvol_lowrate:'low volatility + low interest rate bull market (VIX<18, rates<2%, ideal RSI 50-70, Beta 1.2-2.0, ATR 2-5%, mktcap $2B-$10B)',
+  highvol_highrate:'high volatility + high interest rate environment (VIX>28, rates>6%, ideal RSI 40-60, Beta 0.8-1.2, FCF yield>4%, D/E<0.5, P/E<20)'
 };
 const HOLD={
   intraday:'intraday same-day trade — entry 9:45-10:30 AM EST, exit 3:00-3:45 PM EST',
-  swing:'swing trade 2-5 days — entry at open or pullback to support, exit at resistance',
+  swing:'swing trade 2-5 days — entry at open or pullback to support, exit at key resistance',
   short:'short-term 1-2 weeks — entry on breakout confirmation, exit at 1.5-2x ATR target'
 };
+const REAL_STOCKS=`Use ONLY real NYSE/NASDAQ tickers:
+Tech: NVDA,MSFT,AAPL,META,GOOGL,AMZN,CRM,NOW,PANW,CRWD,AXON,ANET,FTNT,PLTR,TTD,DDOG,ZS,SNOW
+Finance: JPM,GS,MS,BAC,WFC,SCHW,BLK,SPGI,ICE,CME,FCNCA,ALLY,IBKR,RJF,HOOD
+Energy: XOM,CVX,COP,EOG,DVN,MPC,VLO,OVV,RRC,AR,CTRA,MTDR,SLB,HAL,NOG
+Industrial: CAT,DE,GE,HON,LMT,RTX,HWM,SAIA,XPO,JBHT,GXO,FDX,ODFL,TDG,PWR
+Healthcare: UNH,LLY,ABBV,TMO,DHR,ISRG,INSP,EHC,PODD,TMDX,DOCS,RDNT,IRTC,ACAD
+Utilities: VST,NRG,CEG,AES,ETR`;
 
 async function runScan(){
   const key=getKey();
   if(!key||(!key.startsWith('ghp_')&&!key.startsWith('github_pat_')&&!key.startsWith('gho_'))){
-    alert('Please enter a valid GitHub personal access token first.');return;
+    alert('Please enter a valid GitHub token first.');return;
   }
   savePrefs();
   const btn=document.getElementById('scan-btn');
   btn.disabled=true;btn.textContent='⏳ Scanning...';
   const grid=document.getElementById('grid');
-  grid.innerHTML='<div class="ld-wrap"><div class="ld"><span></span><span></span><span></span></div><span>Querying GitHub Models…</span></div>';
+
+  // Show animated progress steps
+  grid.innerHTML=`<div class="ld-wrap">
+    <div class="ld"><span></span><span></span><span></span></div>
+    <div class="ld-steps">
+      <div class="ld-step active" id="ls1">① AI selecting stocks…</div>
+      <div class="ld-step" id="ls2">② Fetching 30 days historical data from Yahoo Finance…</div>
+      <div class="ld-step" id="ls3">③ Calculating real RSI · ATR · ADX · Beta…</div>
+      <div class="ld-step" id="ls4">④ Building cards…</div>
+    </div>
+  </div>`;
   setStatus('');
+
+  const stepDone=(id,next)=>{
+    const el=document.getElementById(id);if(el)el.className='ld-step done';
+    const nl=document.getElementById(next);if(nl)nl.className='ld-step active';
+  };
 
   const regime=document.getElementById('regime').value;
   const sector=document.getElementById('sector').value;
@@ -373,98 +558,229 @@ async function runScan(){
   const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const sectorNote=sector==='all'?'across all sectors favoured by this regime':`focused on the ${sector} sector`;
   const watch=getWatch();
-  const watchNote=watch.length?` If any of these watchlist tickers fit: ${watch.join(', ')}.`:'';
+  const watchNote=watch.length?` Prioritise these watchlist tickers if they fit: ${watch.join(', ')}.`:'';
 
-  const realStockExamples = `Examples of REAL stocks to draw from (use these or similar real NYSE/NASDAQ listed companies):
-Tech: NVDA, MSFT, AAPL, META, GOOGL, AMZN, CRM, NOW, SNOW, PANW, CRWD, AXON, ANET, FTNT
-Finance: JPM, GS, MS, BAC, WFC, SCHW, BLK, SPGI, ICE, CME, FCNCA, ALLY, HOOD
-Energy: XOM, CVX, COP, EOG, PXD, DVN, MPC, VLO, OVV, RRC, AR, CTRA, MTDR
-Industrial: CAT, DE, GE, HON, LMT, RTX, HWM, SAIA, XPO, JBHT, GXO, FDX, ODFL
-Healthcare: UNH, LLY, ABBV, TMO, DHR, ISRG, INSP, EHC, ACAD, PODD, TMDX, DOCS
-Utilities/Other: VST, NRG, CEG, FTI, SLB, HAL, BKR`;
+  // ── STEP 1: AI picks tickers only ──
+  const tickerPrompt=`You are a quantitative stock screener. For ${today}, select exactly 4 REAL stock tickers on NYSE/NASDAQ that best fit ${REGIME[regime]} parameters, ${sectorNote}, for ${HOLD[holding]}.${watchNote}
 
-  const prompt=`You are a quantitative stock screener with deep knowledge of real US-listed equities. For ${today}, select exactly 4 REAL stocks currently listed on NYSE or NASDAQ that best fit ${REGIME[regime]} parameters, ${sectorNote}, for ${HOLD[holding]}.${watchNote}
+${REAL_STOCKS}
 
-CRITICAL RULES:
-- Use ONLY real, currently traded US stocks with real ticker symbols (e.g. NVDA, JPM, XOM, CAT)
-- NEVER use placeholder names like Alpha, Beta, Gamma, Delta, XYZ, ABC, Company A, or any fictional names
-- NEVER invent tickers — every ticker must be a real NYSE or NASDAQ listed company
-- Use realistic prices close to actual market prices for each company
-- If unsure about a stock, pick one from this verified list: ${realStockExamples}
+RULES: Only real tickers. Never fictional names like Alpha/Beta/Gamma/Delta/XYZ.
+Return ONLY a JSON array. No markdown. No backticks.
 
-Return ONLY a valid JSON array. No markdown, no backticks, no explanation. Pure JSON only.
+Each object: {
+  ticker: string,
+  name: string (full company name),
+  sector: string,
+  signal: "STRONG BUY"|"BUY"|"WATCH",
+  stop_pct: number (% below entry for stop loss, 4-12),
+  target_pct: number (% above entry for target, 5-20),
+  entry_time: string,
+  exit_time: string,
+  catalyst: string (max 7 words, real catalyst),
+  rationale: string (max 16 words),
+  card_type: "bull"|"str"|"neu"
+}`;
 
-Each object must have exactly these fields:
-ticker (real NYSE/NASDAQ ticker), name (real company full name), sector (real sector), price (number, realistic market price), change_pct (number -3 to +4), rsi (integer 44-68), atr_pct (number 1 decimal), beta (number 1 decimal), volume_surge (number 1 decimal), adx (integer 25-50), signal ("STRONG BUY"|"BUY"|"WATCH"), entry_time (string), entry_price (number), stop_loss (number strictly below entry_price), exit_time (string), exit_price (number strictly above entry_price for BUY and STRONG BUY), catalyst (max 7 words describing real catalyst), rationale (max 16 words), card_type ("bull"|"str"|"neu")`;
-
+  let aiStocks=[];
   try{
-    const res=await fetch('https://models.inference.ai.azure.com/chat/completions',{
+    const res=await fetch('https://models.github.ai/inference/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({
         model:selectedModel,
-        max_tokens:1400,
+        max_tokens:900,
         temperature:0.3,
         messages:[
-          {role:'system',content:'You are an expert quantitative stock screener with encyclopedic knowledge of real NYSE and NASDAQ listed companies. You ONLY use real stock tickers that actually trade on US exchanges. NEVER use placeholder names like Alpha, Beta, Gamma, Delta, XYZ or any fictional names. Always respond with pure JSON arrays only, no markdown, no backticks, no explanation.'},
-          {role:'user',content:prompt}
+          {role:'system',content:'You are an expert quantitative stock screener. Only use real NYSE/NASDAQ tickers. Never use fictional placeholders. Respond with pure JSON arrays only, no markdown, no backticks.'},
+          {role:'user',content:tickerPrompt}
         ]
       })
     });
-    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||'GitHub Models API error '+res.status);}
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||'GitHub Models error '+res.status);}
     const data=await res.json();
     const text=data.choices[0].message.content;
     const clean=text.replace(/```json|```/g,'').trim();
-    const stocks=JSON.parse(clean);
-    renderCards(stocks);
-    setStatus(`✓ ${stocks.length} picks · ${today} · ${selectedModel}`);
+    aiStocks=JSON.parse(clean);
+    stepDone('ls1','ls2');
   }catch(e){
-    grid.innerHTML=`<div class="empty">Error: ${e.message}<br><span class="hint">Check your GitHub token and that you have accepted GitHub Models access.</span></div>`;
-    setStatus('Scan failed.');
+    grid.innerHTML=`<div class="empty">AI error: ${e.message}<br><span class="hint">Check your GitHub token and model access.</span></div>`;
+    btn.disabled=false;btn.textContent='▶ Run today\'s scan';return;
   }
+
+  // ── STEP 2: Fetch SPY historical for Beta calculation ──
+  const spyData=await fetchHistorical('SPY',40);
+  stepDone('ls2','ls3');
+
+  // ── STEP 3: Fetch historical data and calculate real indicators ──
+  const enriched=await Promise.all(aiStocks.map(async(s)=>{
+    const hist=await fetchHistorical(s.ticker,40);
+    if(!hist){
+      return{...s,price:0,change_pct:0,volume_surge:0,rsi:null,atr_pct:null,adx:null,beta:null,live:false};
+    }
+
+    // Calculate all indicators from real data
+    const rsi=calcRSI(hist.closes);
+    const atr_pct=calcATR(hist.highs,hist.lows,hist.closes);
+    const adx=calcADX(hist.highs,hist.lows,hist.closes);
+    let beta=null;
+    if(spyData&&hist.closes.length>=20&&spyData.closes.length>=20){
+      const minLen=Math.min(hist.closes.length,spyData.closes.length);
+      beta=calcBeta(hist.closes.slice(-minLen),spyData.closes.slice(-minLen));
+    }
+
+    // Entry/exit/stop from live price
+    const entry=Number(hist.price.toFixed(2));
+    const stop=Number((entry*(1-((s.stop_pct||8)/100))).toFixed(2));
+    const target=Number((entry*(1+((s.target_pct||10)/100))).toFixed(2));
+
+    return{
+      ...s,
+      price:hist.price,
+      change_pct:hist.change_pct,
+      volume_surge:hist.volume_surge,
+      high52:hist.high52,
+      low52:hist.low52,
+      rsi,atr_pct,adx,beta,
+      entry_price:entry,
+      stop_loss:stop,
+      exit_price:target,
+      live:true
+    };
+  }));
+
+  stepDone('ls3','ls4');
+
+  // ── STEP 4: Render ──
+  renderCards(enriched);
+  const liveCount=enriched.filter(s=>s.live).length;
+  setStatus(`✓ ${enriched.length} picks · ${liveCount}/${enriched.length} real data · ${today} · ${selectedModel}`);
   btn.disabled=false;btn.textContent='▶ Run today\'s scan';
 }
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function fmt(v,dec=2){return v!=null?Number(v).toFixed(dec):'—';}
 
 function renderCards(stocks){
   const grid=document.getElementById('grid');
   grid.innerHTML='';
+
   stocks.forEach((s,i)=>{
     const pos=s.change_pct>=0;
-    const rr=Math.abs((s.exit_price-s.entry_price)/(s.entry_price-s.stop_loss)).toFixed(1);
-    const pp=(((s.exit_price-s.entry_price)/s.entry_price)*100).toFixed(1);
-    const lp=(((s.entry_price-s.stop_loss)/s.entry_price)*100).toFixed(1);
+    const rr=s.entry_price&&s.stop_loss&&s.exit_price?
+      Math.abs((s.exit_price-s.entry_price)/(s.entry_price-s.stop_loss)).toFixed(1):'—';
+    const pp=s.entry_price&&s.exit_price?
+      (((s.exit_price-s.entry_price)/s.entry_price)*100).toFixed(1):'—';
+    const lp=s.entry_price&&s.stop_loss?
+      (((s.entry_price-s.stop_loss)/s.entry_price)*100).toFixed(1):'—';
     const sc=s.signal==='STRONG BUY'?'sb':s.signal==='BUY'?'b':'w';
-    const rsiC=s.rsi>=60?'warn':'ok';
-    const atrC=s.atr_pct>=7?'warn':'';
+
+    // RSI colour
+    const rsiV=s.rsi!=null?s.rsi:'—';
+    const rsiC=s.rsi!=null?(s.rsi>70?'danger':s.rsi>60?'warn':'ok'):'';
+
+    // ATR colour
+    const atrV=s.atr_pct!=null?s.atr_pct+'%':'—';
+    const atrC=s.atr_pct!=null?(s.atr_pct>=7?'warn':'ok'):'';
+
+    // ADX colour
+    const adxV=s.adx!=null?s.adx:'—';
+    const adxC=s.adx!=null?(s.adx>=35?'ok':s.adx>=25?'':'warn'):'';
+
+    // Beta colour
+    const betaV=s.beta!=null?s.beta:'—';
+    const betaC=s.beta!=null?(s.beta>2?'warn':'ok'):'';
+
+    const liveTagHtml=s.live
+      ?'<div class="live-tag live">● LIVE DATA</div>'
+      :'<div class="live-tag warn">⚠ DATA UNAVAILABLE</div>';
+
+    const liveStatsHtml=s.live?`
+      <div class="live-stats">
+        <div class="ls"><div class="ls-l">Vol surge</div><div class="ls-v">${s.volume_surge}×</div></div>
+        <div class="ls"><div class="ls-l">52W High</div><div class="ls-v">$${s.high52||'—'}</div></div>
+        <div class="ls"><div class="ls-l">52W Low</div><div class="ls-v">$${s.low52||'—'}</div></div>
+        <div class="ls"><div class="ls-l">vs 52W High</div><div class="ls-v">${s.high52&&s.price?((s.price/s.high52-1)*100).toFixed(1)+'%':'—'}</div></div>
+      </div>`:'';
+
     const card=document.createElement('div');
     card.className=`card ${s.card_type||'bull'}`;
-    card.style.animationDelay=(i*0.09)+'s';
+    card.style.animationDelay=(i*0.1)+'s';
+
     card.innerHTML=`
       <div class="card-top">
-        <div><div class="ticker">${s.ticker}</div><div class="co-name">${s.name}</div><div class="sec-pill">${s.sector}</div></div>
-        <div class="price-block"><div class="price-main">$${Number(s.price).toFixed(2)}</div><div class="price-chg ${pos?'pos':'neg'}">${pos?'+':''}${Number(s.change_pct).toFixed(2)}% today</div></div>
+        <div>
+          <div class="ticker">${s.ticker}</div>
+          <div class="co-name">${s.name}</div>
+          <div class="sec-pill">${s.sector}</div>
+        </div>
+        <div class="price-block">
+          <div class="price-main">$${fmt(s.price)}</div>
+          ${liveTagHtml}
+          <div class="price-chg ${pos?'pos':'neg'}">${pos?'+':''}${fmt(s.change_pct)}% today</div>
+        </div>
+      </div>
+
+      ${liveStatsHtml}
+
+      <div class="indicators-hdr">
+        Indicators
+        <span class="ind-tag ${s.live?'real':'est'}">${s.live?'● Calculated from real data':'⚠ Data unavailable'}</span>
       </div>
       <div class="metrics">
-        <div class="met"><div class="ml">RSI</div><div class="mv ${rsiC}">${s.rsi}</div></div>
-        <div class="met"><div class="ml">ATR</div><div class="mv ${atrC}">${s.atr_pct}%</div></div>
-        <div class="met"><div class="ml">Beta</div><div class="mv">${s.beta}</div></div>
-        <div class="met"><div class="ml">Vol surge</div><div class="mv">${s.volume_surge}×</div></div>
-        <div class="met"><div class="ml">ADX</div><div class="mv">${s.adx}</div></div>
+        <div class="met ${s.live?'real-met':'est-met'}">
+          <div class="ml">RSI (14)</div>
+          <div class="mv ${rsiC}">${rsiV}</div>
+          <div class="msrc">${s.live?'real':'—'}</div>
+        </div>
+        <div class="met ${s.live?'real-met':'est-met'}">
+          <div class="ml">ATR (14)</div>
+          <div class="mv ${atrC}">${atrV}</div>
+          <div class="msrc">${s.live?'real':'—'}</div>
+        </div>
+        <div class="met ${s.live?'real-met':'est-met'}">
+          <div class="ml">ADX (14)</div>
+          <div class="mv ${adxC}">${adxV}</div>
+          <div class="msrc">${s.live?'real':'—'}</div>
+        </div>
+        <div class="met ${s.live?'real-met':'est-met'}">
+          <div class="ml">Beta (30d)</div>
+          <div class="mv ${betaC}">${betaV}</div>
+          <div class="msrc">${s.live?'vs SPY':'—'}</div>
+        </div>
+        <div class="met ${s.live?'real-met':'est-met'}">
+          <div class="ml">Vol surge</div>
+          <div class="mv ${s.volume_surge>=2?'ok':''}">${s.volume_surge||'—'}×</div>
+          <div class="msrc">${s.live?'real':'—'}</div>
+        </div>
       </div>
+
       <div class="levels">
-        <div class="lv en"><div class="lv-l">Entry</div><div class="lv-v">$${Number(s.entry_price).toFixed(2)}</div></div>
-        <div class="lv sl"><div class="lv-l">Stop loss</div><div class="lv-v">$${Number(s.stop_loss).toFixed(2)}</div></div>
-        <div class="lv tg"><div class="lv-l">Target</div><div class="lv-v">$${Number(s.exit_price).toFixed(2)}</div></div>
+        <div class="lv en"><div class="lv-l">Entry</div><div class="lv-v">$${fmt(s.entry_price)}</div></div>
+        <div class="lv sl"><div class="lv-l">Stop loss</div><div class="lv-v">$${fmt(s.stop_loss)}</div></div>
+        <div class="lv tg"><div class="lv-l">Target</div><div class="lv-v">$${fmt(s.exit_price)}</div></div>
       </div>
+
       <div class="ee">
-        <div class="eebox en"><div class="eel">Entry</div><div class="eet">${s.entry_time} · $${Number(s.entry_price).toFixed(2)}</div><div class="eed">Stop $${Number(s.stop_loss).toFixed(2)} (−${lp}%)</div></div>
-        <div class="eebox ex"><div class="eel">Exit target</div><div class="eet">${s.exit_time} · $${Number(s.exit_price).toFixed(2)}</div><div class="eed">+${pp}% · R/R ${rr}:1</div></div>
+        <div class="eebox en">
+          <div class="eel">Entry</div>
+          <div class="eet">${s.entry_time||'At open'} · $${fmt(s.entry_price)}</div>
+          <div class="eed">Stop $${fmt(s.stop_loss)} (−${lp}%)</div>
+        </div>
+        <div class="eebox ex">
+          <div class="eel">Exit target</div>
+          <div class="eet">${s.exit_time||'See rationale'} · $${fmt(s.exit_price)}</div>
+          <div class="eed">+${pp}% · R/R ${rr}:1</div>
+        </div>
       </div>
+
       <div class="sig-row">
         <span class="badge ${sc}">${s.signal}</span>
         <span class="rat">${s.rationale}</span>
         <span class="cat">⚡ ${s.catalyst}</span>
+        <a href="https://www.tradingview.com/chart/?symbol=${s.ticker}" target="_blank" class="tv-btn">↗ TradingView</a>
       </div>`;
+
     grid.appendChild(card);
   });
 }
