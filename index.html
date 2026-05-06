@@ -558,8 +558,16 @@ async function fetchHistorical(ticker,days=60){
     const price=meta.regularMarketPrice||closes[closes.length-1];
     const prev=meta.previousClose||closes[closes.length-2];
     const change_pct=prev?((price-prev)/prev*100):0;
-    const avgVol=meta.averageDailyVolume3Month||meta.averageDailyVolume10Day||1;
-    const todayVol=meta.regularMarketVolume||volumes[volumes.length-1]||0;
+    // Calculate avg volume from last 20 trading days of historical data (more reliable than metadata)
+    const histVolumes=volumes.filter(v=>v>0);
+    const avgVolCalc=histVolumes.length>=5
+      ? histVolumes.slice(-21,-1).reduce((a,b)=>a+b,0)/Math.max(histVolumes.slice(-21,-1).length,1)
+      : (meta.averageDailyVolume3Month||meta.averageDailyVolume10Day||1);
+    const avgVol=avgVolCalc>0?avgVolCalc:1;
+    // Use last two days of volume to handle pre-market (todayVol may be 0 before open)
+    const lastVol=volumes[volumes.length-1]||0;
+    const prevVol=volumes[volumes.length-2]||0;
+    const todayVol=meta.regularMarketVolume||(lastVol>0?lastVol:prevVol)||0;
     const earningsMs=meta.earningsTimestamp?meta.earningsTimestamp*1000:null;
     const daysToEarnings=earningsMs?Math.round((earningsMs-Date.now())/(86400000)):null;
     return{
@@ -568,7 +576,7 @@ async function fetchHistorical(ticker,days=60){
       volume_surge:Number(Math.min(todayVol/avgVol,9.9).toFixed(1)),
       high52:Number((meta.fiftyTwoWeekHigh||Math.max(...closes)).toFixed(2)),
       low52:Number((meta.fiftyTwoWeekLow||Math.min(...closes)).toFixed(2)),
-      closes,highs,lows,
+      closes,highs,lows,volumes,
       daysToEarnings,
       fetchedAt:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
     };
@@ -582,7 +590,7 @@ let marketContext={vix:null,spyChg:0,etfs:{},detectedRegime:'highvol_medrate'};
 
 async function loadMarketContext(){
   document.getElementById('regime-auto-tag').textContent='Fetching VIX & sector data…';
-  const etfList=['SPY','QQQ','%5EVIX','XLE','XLF','XLI','XLK'];
+  const etfList=['SPY','QQQ','%5EVIX','XLE','XLF','XLI','XLK','XLV','XLY'];
   const results=await Promise.all(etfList.map(async t=>{
     const d=await fetchHistorical(t,5);
     return{ticker:t,data:d};
@@ -604,7 +612,9 @@ async function loadMarketContext(){
     } else {
       marketContext.etfs[r.ticker]=ch;
       const elId='rb-'+r.ticker.toLowerCase();
-      const el=document.getElementById(elId);if(el){el.textContent=chStr;el.className='regime-value '+cls;}
+      const el=document.getElementById(elId);
+      if(el){el.textContent=chStr;el.className='regime-value '+cls;}
+      // XLV and XLY don't have display elements but are stored for sector scoring
     }
   });
 
@@ -635,9 +645,10 @@ function scoreStock(s,regime){
   const rsiPts=rsiHit?20:s.rsi!=null?(s.rsi>=params.rsiMin-5&&s.rsi<=params.rsiMax+5?10:0):0;
   score+=rsiPts;breakdown.push({label:'RSI',val:s.rsi!=null?s.rsi:'—',pts:rsiPts,max:20,hit:rsiHit});
 
-  // ATR (20pts)
+  // ATR (20pts) — full points if in range, partial if close, 0 if way off
   const atrHit=s.atr_pct!=null&&s.atr_pct>=params.atrMin&&s.atr_pct<=params.atrMax;
-  const atrPts=atrHit?20:s.atr_pct!=null?10:0;
+  const atrClose=s.atr_pct!=null&&s.atr_pct>=params.atrMin-1&&s.atr_pct<=params.atrMax+2;
+  const atrPts=atrHit?20:atrClose?10:0;
   score+=atrPts;breakdown.push({label:'ATR',val:s.atr_pct!=null?s.atr_pct+'%':'—',pts:atrPts,max:20,hit:atrHit});
 
   // ADX (15pts)
@@ -673,10 +684,12 @@ function scoreStock(s,regime){
 
 function getSectorETF(sector){
   const s=(sector||'').toLowerCase();
-  if(s.includes('tech')||s.includes('software')||s.includes('semi'))return'XLK';
-  if(s.includes('financ')||s.includes('bank')||s.includes('insur'))return'XLF';
-  if(s.includes('energy')||s.includes('oil')||s.includes('gas'))return'XLE';
-  if(s.includes('industri')||s.includes('freight')||s.includes('defense'))return'XLI';
+  if(s.includes('tech')||s.includes('software')||s.includes('semi')||s.includes('cloud')||s.includes('data'))return'XLK';
+  if(s.includes('financ')||s.includes('bank')||s.includes('insur')||s.includes('invest')||s.includes('brokerage'))return'XLF';
+  if(s.includes('energy')||s.includes('oil')||s.includes('gas')||s.includes('petrol')||s.includes('pipeline'))return'XLE';
+  if(s.includes('industri')||s.includes('freight')||s.includes('defense')||s.includes('aerospace')||s.includes('transport')||s.includes('logistics'))return'XLI';
+  if(s.includes('health')||s.includes('medical')||s.includes('pharma')||s.includes('biotech')||s.includes('hospital'))return'XLV';
+  if(s.includes('consumer')||s.includes('retail')||s.includes('restaurant')||s.includes('food')||s.includes('beverage'))return'XLY';
   return null;
 }
 
@@ -695,18 +708,14 @@ const REGIME_DESC={
   highvol_highrate:'high volatility + high interest rate environment (VIX>28, rates>6%, RSI 40-60, Beta 0.8-1.2, FCF yield>4%, D/E<0.5, P/E<20)'
 };
 
-const HOLD={
-  intraday:'intraday same-day trade — entry 9:45-10:30 AM EST, exit 3:00-3:45 PM EST',
-  swing:'swing trade 2-5 days — entry at open or pullback to support, exit at key resistance',
-  short:'short-term 1-2 weeks — entry on breakout confirmation, exit at 1.5-2x ATR target'
-};
+// HOLD descriptions used in prompt are now in HOLD_EXIT_RULES and holdingLabel below runScan
 
 // MID-CAP focused stock list ($5B–$20B)
 const MIDCAP_STOCKS=`ONLY use real mid-cap NYSE/NASDAQ stocks ($5B-$20B market cap):
 Tech/Software: DDOG,BILL,GTLB,TOST,APPF,PCTY,CWAN,ASAN,FRSH,MNDY,BRZE,ZI,S,SMAR,GWRE,JAMF,NTNX,ENFN
 Finance: HOOD,IBKR,ALLY,RJF,EWBC,SNV,WBS,CATY,FFIN,CVBF,OKSB,SFNC,BANF,HTLF,BOKF
-Energy: RRC,AR,CTRA,NOG,VTLE,SM,CHRD,MGY,MTDR,OVV,REPX,REX,PDCE,CNX,CRK
-Industrial: SAIA,XPO,STNG,GNRC,ESAB,GTES,ASGN,KTOS,HAYW,ARIS,UHAL,GXO,RADCQ,HTLD
+Energy: RRC,AR,CTRA,NOG,VTLE,SM,CHRD,MGY,MTDR,OVV,REPX,CNX,CRK,ESTE,PR
+Industrial: SAIA,XPO,STNG,GNRC,ESAB,GTES,ASGN,KTOS,HAYW,ARIS,UHAL,GXO,HTLD,RUSHA,WERN
 Healthcare: INSP,TMDX,RDNT,IRTC,ACAD,DOCS,RXST,OMCL,PRCT,NVCR,AMPH,ITCI,VRDN,ERAS
 Consumer: WING,BROS,TXRH,CAVA,SG,PTLO,SHAK,FAT,DNUT,CAKE,BJRI
 Materials: MP,CRS,CMC,ZEUS,IIIN,KALU,CENX,HCC,AMR`;
@@ -757,10 +766,23 @@ async function runScan(){
   if((marketContext.etfs['XLF']||0)>0.1)greenSectors.push('Financials');
   if((marketContext.etfs['XLE']||0)>0.1)greenSectors.push('Energy');
   if((marketContext.etfs['XLI']||0)>0.1)greenSectors.push('Industrials');
+  if((marketContext.etfs['XLV']||0)>0.1)greenSectors.push('Healthcare');
+  if((marketContext.etfs['XLY']||0)>0.1)greenSectors.push('Consumer');
   const sectorNote2=greenSectors.length?` Today's green sectors: ${greenSectors.join(', ')} — prefer these.`:'';
+
+  // Holding period exit time instructions — explicit so AI never defaults to intraday
+  const HOLD_EXIT_RULES={
+    intraday:'entry_time must be between 9:45 AM and 10:30 AM EST. exit_time must be between 3:00 PM and 3:45 PM EST same day. Example: entry_time="9:52 AM EST" exit_time="3:15 PM EST"',
+    swing:'entry_time must be "Open" or a specific morning time. exit_time must be a DATE RANGE like "May 8-9 open" or "Day 3-4 open" — NEVER an intraday time like 3PM.',
+    short:'entry_time must be "Breakout confirmation" or specific time. exit_time must be a DATE RANGE like "May 12-15" or "Week of May 12" — NEVER an intraday time.'
+  };
+  const holdingLabel={intraday:'INTRADAY (same day exit)',swing:'SWING TRADE (2-5 day hold, exit over multiple days)',short:'SHORT-TERM (1-2 week hold)'};
 
   // AI stock selection prompt
   const prompt=`You are a quantitative stock screener. For ${today}, select exactly 4 REAL mid-cap stocks from NYSE/NASDAQ fitting ${REGIME_DESC[activeRegime]} parameters, ${sectorNote}.${watchNote}${sectorNote2}
+
+HOLDING PERIOD: ${holdingLabel[holding]}
+EXIT TIME RULE: ${HOLD_EXIT_RULES[holding]}
 
 ${MIDCAP_STOCKS}
 
@@ -768,6 +790,7 @@ STRICT RULES:
 - Only real tickers with market cap $5B-$20B
 - Never fictional names (Alpha/Beta/Gamma/Delta/XYZ)
 - Prefer stocks from today's green sectors if possible
+- CRITICAL: exit_time MUST match the holding period above — for swing/short trades it must be a date range, NEVER a same-day time
 - Return ONLY a JSON array, no markdown, no backticks
 
 Each object: {
@@ -777,8 +800,8 @@ Each object: {
   signal: "STRONG BUY"|"BUY"|"WATCH",
   stop_mult: number (ATR multiplier for stop, 1.2-2.0),
   target_mult: number (ATR multiplier for target, 2.0-4.0),
-  entry_time: string,
-  exit_time: string,
+  entry_time: string (must follow EXIT TIME RULE above),
+  exit_time: string (must follow EXIT TIME RULE above — for swing/short use a date range like "May 8-9" not a time),
   catalyst: string (max 7 words, real catalyst),
   rationale: string (max 16 words),
   card_type: "bull"|"str"|"neu"
@@ -822,7 +845,8 @@ Each object: {
     const stopMult=s.stop_mult||params.stopMult||1.5;
     const targetMult=s.target_mult||params.targetMult||2.5;
     const entry=Number(hist.price.toFixed(2));
-    const stop=atrDollar?Number((entry-(stopMult*atrDollar)).toFixed(2)):Number((entry*0.92).toFixed(2));
+    const rawStop=atrDollar?entry-(stopMult*atrDollar):entry*0.92;
+    const stop=Number(Math.max(rawStop, entry*0.80, 0.01).toFixed(2)); // never below 80% of entry or zero
     const target=atrDollar?Number((entry+(targetMult*atrDollar)).toFixed(2)):Number((entry*1.10).toFixed(2));
     return{
       ...s,
@@ -851,7 +875,7 @@ Each object: {
     return{...s,score,breakdown,signal};
   }).sort((a,b)=>b.score-a.score);
 
-  renderCards(scored,activeRegime);
+  renderCards(scored,activeRegime,holding);
   const liveCount=scored.filter(s=>s.live).length;
   const scanTime=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   setStatus(`✓ ${scored.length} picks · ${liveCount}/${scored.length} live · Regime: ${params.label} · Last scan: ${scanTime} EST · ${selectedModel}`);
@@ -863,15 +887,16 @@ Each object: {
 // ══════════════════════════════════════════════════════════════════════════════
 function fmt(v,dec=2){return v!=null?Number(v).toFixed(dec):'—';}
 
-function renderCards(stocks,regime){
+function renderCards(stocks,regime,holding){
   const grid=document.getElementById('grid');
   grid.innerHTML='';
   const params=REGIME_PARAMS[regime]||REGIME_PARAMS['highvol_medrate'];
 
   stocks.forEach((s,i)=>{
     const pos=s.change_pct>=0;
-    const rr=s.entry_price&&s.stop_loss&&s.exit_price?
-      Math.abs((s.exit_price-s.entry_price)/(s.entry_price-s.stop_loss)).toFixed(1):'—';
+    const rrDenom=s.entry_price&&s.stop_loss?(s.entry_price-s.stop_loss):0;
+    const rr=rrDenom>0.01&&s.exit_price?
+      Math.abs((s.exit_price-s.entry_price)/rrDenom).toFixed(1):'—';
     const pp=s.entry_price&&s.exit_price?(((s.exit_price-s.entry_price)/s.entry_price)*100).toFixed(1):'—';
     const lp=s.entry_price&&s.stop_loss?(((s.entry_price-s.stop_loss)/s.entry_price)*100).toFixed(1):'—';
     const sc=s.signal==='STRONG BUY'?'sb':s.signal==='BUY'?'b':s.signal==='AVOID'?'av':'w';
@@ -885,7 +910,8 @@ function renderCards(stocks,regime){
     let earningsHtml='';
     if(s.daysToEarnings!=null&&s.daysToEarnings>=0&&s.daysToEarnings<=7){
       const cls=s.daysToEarnings<=2?'':'close';
-      earningsHtml=`<div class="earnings-warn ${cls}">⚠ Earnings in ${s.daysToEarnings} day${s.daysToEarnings!==1?'s':''} — ${s.daysToEarnings<=2?'AVOID — binary event risk':'CAUTION — reduce position size'}</div>`;
+      const dLabel=s.daysToEarnings===0?'today':s.daysToEarnings===1?'tomorrow':`in ${s.daysToEarnings} days`;
+      earningsHtml=`<div class="earnings-warn ${cls}">⚠ Earnings ${dLabel} — ${s.daysToEarnings<=2?'AVOID — binary event risk':'CAUTION — reduce position size'}</div>`;
     }
 
     // Sector momentum
@@ -972,12 +998,12 @@ function renderCards(stocks,regime){
       <div class="levels">
         <div class="lv en"><div class="lv-l">Entry</div><div class="lv-v">$${fmt(s.entry_price)}</div><div class="lv-note">${s.entry_time||'At open'}</div></div>
         <div class="lv sl"><div class="lv-l">Stop (${s.stop_mult||1.5}× ATR)</div><div class="lv-v">$${fmt(s.stop_loss)}</div><div class="lv-note">−${lp}% · ATR-based</div></div>
-        <div class="lv tg"><div class="lv-l">Target (${s.target_mult||2.5}× ATR)</div><div class="lv-v">$${fmt(s.exit_price)}</div><div class="lv-note">+${pp}% · R/R ${rr}:1</div></div>
+        <div class="lv tg"><div class="lv-l">${holding==='intraday'?'Target (today)':holding==='swing'?'Target (2-5d)':'Target (1-2wk)'} ${s.target_mult||2.5}× ATR</div><div class="lv-v">$${fmt(s.exit_price)}</div><div class="lv-note">+${pp}% · R/R ${rr}:1</div></div>
       </div>
 
       <div class="ee">
         <div class="eebox en"><div class="eel">Entry</div><div class="eet">${s.entry_time||'At open'} · $${fmt(s.entry_price)}</div><div class="eed">Stop $${fmt(s.stop_loss)} (−${lp}%)</div></div>
-        <div class="eebox ex"><div class="eel">Exit target · ${s.exit_time||''}</div><div class="eet">$${fmt(s.exit_price)}</div><div class="eed">+${pp}% · R/R ${rr}:1</div></div>
+        <div class="eebox ex"><div class="eel">${holding==='intraday'?'Exit (same day)':holding==='swing'?'Exit (2-5 days)':'Exit (1-2 weeks)'} · ${s.exit_time||''}</div><div class="eet">$${fmt(s.exit_price)}</div><div class="eed">+${pp}% · R/R ${rr}:1</div></div>
       </div>
 
       <div class="sig-row">
@@ -992,11 +1018,19 @@ function renderCards(stocks,regime){
         <span style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;align-self:center">Log outcome:</span>
         <button class="j-btn" onclick="logAndMark('${s.ticker}','${s.signal}','hit',this)">✓ Target hit</button>
         <button class="j-btn" onclick="logAndMark('${s.ticker}','${s.signal}','stop',this)">✗ Stop hit</button>
-        <button class="j-btn" onclick="logAndMark('${s.ticker}','${s.signal}','open',this)">⏳ Still open</button>
+        <button class="j-btn" onclick="logAndMark('${s.ticker}','${s.signal}','open',this)">⏳ Open</button>
+        <button class="j-btn" onclick="clearTradeLog('${s.ticker}',this)">↺ Clear</button>
       </div>`;
 
     grid.appendChild(card);
   });
+}
+
+function clearTradeLog(ticker,btn){
+  const j=getJournal().filter(x=>x.ticker!==ticker);
+  saveJournal(j);renderTracker();
+  const row=btn.parentElement;
+  row.querySelectorAll('.j-btn').forEach(b=>{b.className='j-btn';});
 }
 
 function logAndMark(ticker,signal,outcome,btn){
