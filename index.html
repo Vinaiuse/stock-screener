@@ -1239,10 +1239,27 @@ Each of the 15 objects must have:
     if(de!=null&&de>=0&&de<=mode.earningsAvoidDays)signal='AVOID';
     const tier=getTier(score);
     return{...s,score,breakdown,signal,tier};
-  }).sort((a,b)=>b.score-a.score);
+  }).sort((a,b)=>{
+    // Primary: score descending
+    if(b.score !== a.score) return b.score - a.score;
+    // Secondary: vol_surge descending (most active stock first)
+    if(b.vol_surge !== a.vol_surge) return b.vol_surge - a.vol_surge;
+    // Tertiary: RSI closer to midpoint (55) = better momentum
+    const aRsiDist = Math.abs((a.rsi||50) - 55);
+    const bRsiDist = Math.abs((b.rsi||50) - 55);
+    return aRsiDist - bRsiDist;
+  });
+
+  // Apply data quality cap — stocks with no live data cannot rank above 30
+  const scoredCapped = scored.map(s=>{
+    if(!s.live && s.score>30){
+      return {...s, score:30, signal:'WATCH', tier:{tier:4,label:'Tier 4 — No live data',cls:'tier-4'}};
+    }
+    return s;
+  });
 
   // Debug log — open browser console (F12) to verify scores are different
-  console.table(scored.map(s=>({
+  console.table(scoredCapped.map(s=>({
     ticker: s.ticker,
     score: s.score,
     signal: s.signal,
@@ -1255,10 +1272,10 @@ Each of the 15 objects must have:
   })));
 
   // Filter out AVOID and show top 5
-  const filtered=scored.filter(s=>s.signal!=='AVOID').slice(0,5);
-  const displayStocks=filtered.length>0?filtered:scored.slice(0,5); // fallback if all scored low
+  const filtered=scoredCapped.filter(s=>s.signal!=='AVOID').slice(0,5);
+  const displayStocks=filtered.length>0?filtered:scoredCapped.slice(0,5);
 
-  renderCards(displayStocks,holding,activeRegime,scored.length);
+  renderCards(displayStocks,holding,activeRegime,scoredCapped.length);
   const liveCount=displayStocks.filter(s=>s.live).length;
   const scanTime=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   setStatus(`✓ Top ${displayStocks.length} of ${scored.length} candidates · ${liveCount}/${displayStocks.length} live data · Regime: ${regime.label} · ${scanTime} EST · ${selectedModel}`);
