@@ -1123,8 +1123,11 @@ async function runScan(){
     ?`across ALL sectors — distribute candidates: Tech(2), Finance(2), Energy(2), Industrial(1), Healthcare(2), Utilities/Power(1), Consumer(2), Materials(1), Comms(1), Other(1). Increase count for green sectors: ${greenSectors.length?greenSectors.join(', '):'none identified'}`
     :`focused on ${sector} sector — all 15 candidates from this sector`;
 
+  // Watchlist handling — split into guaranteed slots + hint
+  // Watchlist tickers are GUARANTEED to be fetched and scored
+  // regardless of whether AI picks them — handled in data fetch step
   const watchNote=watch.length
-    ?`\nWATCHLIST PRIORITY: Include these tickers as candidates if they exist in the universe (they override sector slots): ${watch.join(', ')}`
+    ?`\nWATCHLIST TICKERS (MANDATORY): You MUST include ALL of these as candidates, they take priority over any sector distribution: ${watch.join(', ')}. These are pre-screened from Finviz and MUST appear in your 15 candidates. Reduce other sector slots to accommodate them.`
     :'';
 
   const exitInstr={
@@ -1181,6 +1184,35 @@ Each of the 15 objects must have:
     const clean=data.choices[0].message.content.replace(/```json|```/g,'').trim();
     aiStocks=JSON.parse(clean);
     if(!Array.isArray(aiStocks)||aiStocks.length===0)throw new Error('AI returned empty or invalid response');
+
+    // GUARANTEE: inject any watchlist tickers the AI missed
+    // This ensures Finviz-screened tickers are ALWAYS scored
+    if(watch.length>0){
+      const aiTickers=aiStocks.map(s=>s.ticker.toUpperCase());
+      const missing=watch.filter(t=>!aiTickers.includes(t.toUpperCase()));
+      if(missing.length>0){
+        // Add missing watchlist tickers as placeholder candidates
+        // Real data will be fetched and scored — AI just didn't pick them
+        const placeholders=missing.map(t=>({
+          ticker:t.toUpperCase(),
+          name:t.toUpperCase()+' (Watchlist)',
+          sector:'Unknown',
+          signal:'WATCH',
+          stop_mult:1.5,
+          t1_mult:2.5,
+          entry_time:'At open',
+          exit_time:mode.exitRule||'See analysis',
+          catalyst:'Finviz screener pick',
+          rationale:'Pre-screened from Finviz — scored from real data.',
+          card_type:'neu',
+          _fromWatchlist:true
+        }));
+        // Add to candidates (may push beyond 15 — all get scored, top 5 shown)
+        aiStocks=[...aiStocks,...placeholders];
+        console.log('Watchlist injection: added',missing.join(', '),'to candidate pool');
+      }
+    }
+
     stepDone('ls2','ls3');
   }catch(e){
     grid.innerHTML=`<div class="empty">AI error: ${e.message}<br><span class="hint">Check your GitHub token and try again.</span></div>`;
@@ -1231,7 +1263,7 @@ Each of the 15 objects must have:
 
   stepDone('ls4','ls5');
 
-  // Score all 15, apply earnings override, sort by score
+  // Score all candidates (may be more than 15 if watchlist added extras)
   const scored=enriched.map(s=>{
     const {score,breakdown}=scoreStock(s,holding);
     const de=s.daysToEarnings;
@@ -1278,7 +1310,9 @@ Each of the 15 objects must have:
   renderCards(displayStocks,holding,activeRegime,scoredCapped.length);
   const liveCount=displayStocks.filter(s=>s.live).length;
   const scanTime=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  setStatus(`✓ Top ${displayStocks.length} of ${scored.length} candidates · ${liveCount}/${displayStocks.length} live data · Regime: ${regime.label} · ${scanTime} EST · ${selectedModel}`);
+  const wlInResults=displayStocks.filter(s=>s._fromWatchlist).length;
+  const wlNote=wlInResults>0?` · ${wlInResults} from your watchlist ★`:'';
+  setStatus(`✓ Top ${displayStocks.length} of ${scored.length} candidates · ${liveCount}/${displayStocks.length} live data${wlNote} · Regime: ${regime.label} · ${scanTime} EST · ${selectedModel}`);
   btn.disabled=false;btn.textContent='▶ Run scan — top 5 from 15';
 }
 
@@ -1410,7 +1444,7 @@ function renderCards(stocks,holding,regime,totalCandidates){
       <div class="card-top">
         <div class="card-left">
           <div style="font-size:10px;color:var(--dim);margin-bottom:3px">Rank #${i+1} of ${stocks.length} · Score rank from ${totalCandidates} candidates</div>
-          <div class="ticker">${s.ticker}</div>
+          <div class="ticker">${s.ticker}${s._fromWatchlist?'<span style="font-size:10px;color:var(--amber);font-family:var(--mono);font-weight:400;margin-left:6px;background:var(--adim);border:1px solid rgba(242,194,90,.2);border-radius:20px;padding:2px 7px;">★ Watchlist</span>':''}</div>
           <div class="co-name">${s.name}</div>
           <div class="tag-row">
             <span class="sec-pill">${s.sector}</span>
