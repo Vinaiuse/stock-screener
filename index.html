@@ -1006,14 +1006,14 @@ function scoreStock(s,mode){
 
   // RSI
   const rsiHit=s.rsi!=null&&s.rsi>=m.rsiMin&&s.rsi<=m.rsiMax;
-  const rsiClose=s.rsi!=null&&s.rsi>=m.rsiMin-5&&s.rsi<=m.rsiMax+5;
+  const rsiClose=s.rsi!=null&&s.rsi>=m.rsiMin-3&&s.rsi<=m.rsiMax+3;
   const rsiPts=rsiHit?W.rsi:rsiClose?Math.round(W.rsi*0.5):0;
   score+=rsiPts;breakdown.push({label:'RSI',val:s.rsi!=null?s.rsi:'—',pts:rsiPts,max:W.rsi,hit:rsiHit,partial:rsiClose&&!rsiHit});
 
   // ATR
   const atrHit=s.atr_pct!=null&&s.atr_pct>=m.atrMin&&s.atr_pct<=m.atrMax;
-  const atrClose=s.atr_pct!=null&&s.atr_pct>=m.atrMin-1&&s.atr_pct<=m.atrMax+2;
-  const atrPts=atrHit?W.atr:atrClose?Math.round(W.atr*0.5):0;
+  const atrClose=s.atr_pct!=null&&s.atr_pct>=m.atrMin-0.5&&s.atr_pct<=m.atrMax+1;
+  const atrPts=atrHit?W.atr:atrClose?Math.round(W.atr*0.4):0;
   score+=atrPts;breakdown.push({label:'ATR',val:s.atr_pct!=null?s.atr_pct+'%':'—',pts:atrPts,max:W.atr,hit:atrHit,partial:atrClose&&!atrHit});
 
   // ADX
@@ -1026,7 +1026,8 @@ function scoreStock(s,mode){
   const volHit=s.vol_surge>=2.0;
   const volMid=s.vol_surge>=m.minVol;
   const volPts=volHit?W.vol:volMid?Math.round(W.vol*0.6):0;
-  score+=volPts;breakdown.push({label:'Vol',val:s.vol_surge>0?s.vol_surge+'×':'—',pts:volPts,max:W.vol,hit:volHit,partial:volMid&&!volHit});
+  const volDisplay=s.vol_surge>0?s.vol_surge+'×':'No data';
+  score+=volPts;breakdown.push({label:'Vol',val:volDisplay,pts:volPts,max:W.vol,hit:volHit,partial:volMid&&!volHit});
 
   // Beta (only scored if weight > 0)
   if(W.beta>0){
@@ -1039,15 +1040,19 @@ function scoreStock(s,mode){
   const etf=getSectorETF(s.sector);
   const etfChg=etf&&MC.etfs[etf]!=null?MC.etfs[etf]:null;
   const sectorUp=etfChg!=null&&etfChg>0.1;
-  const sectorPts=sectorUp?W.sector:Math.round(W.sector*0.3);
-  score+=sectorPts;breakdown.push({label:'Sector',val:etfChg!=null?(etfChg>=0?'+':'')+etfChg.toFixed(2)+'%':'—',pts:sectorPts,max:W.sector,hit:sectorUp});
+  // Only award partial if we actually have ETF data — null means not loaded, don't reward
+  const sectorPts=etfChg==null?0:sectorUp?W.sector:Math.round(W.sector*0.3);
+  score+=sectorPts;breakdown.push({label:'Sector',val:etfChg!=null?(etfChg>=0?'+':'')+etfChg.toFixed(2)+'%':'Loading',pts:sectorPts,max:W.sector,hit:sectorUp});
 
   // Earnings safety
   const de=s.daysToEarnings;
-  const earnSafe=de==null||de<0||de>m.earningsWarnDays;
+  // de==null means Yahoo didn't return earnings date — treat as unknown, not safe
+  const earnUnknown=de==null;
+  const earnSafe=de!=null&&(de<0||de>m.earningsWarnDays);
   const earnCaution=de!=null&&de>=0&&de>m.earningsAvoidDays&&de<=m.earningsWarnDays;
-  const earnPts=earnSafe?W.earnings:earnCaution?Math.round(W.earnings*0.5):0;
-  score+=earnPts;breakdown.push({label:'Earnings',val:de!=null&&de>=0?'In '+de+'d':'Safe',pts:earnPts,max:W.earnings,hit:earnSafe,partial:earnCaution});
+  const earnPts=earnSafe?W.earnings:earnCaution?Math.round(W.earnings*0.5):earnUnknown?Math.round(W.earnings*0.7):0;
+  const earnLabel=earnUnknown?'Unknown':de<0?'Past':'In '+de+'d';
+  score+=earnPts;breakdown.push({label:'Earnings',val:earnSafe?'Safe':earnLabel,pts:earnPts,max:W.earnings,hit:earnSafe,partial:earnCaution||earnUnknown});
 
   // Trend alignment bonus (price above SMA20 and SMA50)
   if(s.sma20!=null&&s.sma50!=null&&s.price>0){
@@ -1235,6 +1240,19 @@ Each of the 15 objects must have:
     const tier=getTier(score);
     return{...s,score,breakdown,signal,tier};
   }).sort((a,b)=>b.score-a.score);
+
+  // Debug log — open browser console (F12) to verify scores are different
+  console.table(scored.map(s=>({
+    ticker: s.ticker,
+    score: s.score,
+    signal: s.signal,
+    rsi: s.rsi,
+    atr: s.atr_pct,
+    adx: s.adx,
+    beta: s.beta,
+    vol: s.vol_surge,
+    live: s.live
+  })));
 
   // Filter out AVOID and show top 5
   const filtered=scored.filter(s=>s.signal!=='AVOID').slice(0,5);
