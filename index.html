@@ -130,7 +130,11 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .se-box{background:var(--bg3);border-radius:6px;padding:8px 10px;text-align:center}
 .se-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
 .se-pct{font-size:10px;color:var(--muted);margin-bottom:2px}
+.se-box:nth-child(1) .se-pct{color:var(--gtxt)}
+.se-box:nth-child(2) .se-pct{color:var(--btxt)}
+.se-box:nth-child(3) .se-pct{color:var(--ptxt)}
 .se-price{font-size:14px;font-weight:700;color:var(--blue)}
+.se-price.t1{color:var(--green)}.se-price.t2{color:var(--blue)}.se-price.t3{color:var(--purple)}
 .se-size{font-size:9px;color:var(--dim);margin-top:2px}
 
 /* Sector momentum */
@@ -142,7 +146,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 
 /* Score breakdown */
 .sb-hdr{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
-.sb-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:10px}
+.sb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:4px;margin-bottom:10px}
 .sb-item{background:var(--bg3);border-radius:5px;padding:5px 7px}
 .sb-l{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
 .sb-v{font-size:11px;font-weight:700;margin-top:1px}
@@ -154,6 +158,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .ls{background:var(--bg3);border-radius:6px;padding:6px 8px}
 .ls-l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .ls-v{font-size:12px;font-weight:700;margin-top:2px}
+.ls-v.ok{color:var(--green)}.ls-v.warn{color:var(--amber)}.ls-v.danger{color:var(--red)}
 
 /* Indicators */
 .ind-hdr{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;display:flex;align-items:center;gap:6px}
@@ -378,7 +383,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
     <label>Holding mode</label>
     <select id="holding" onchange="updateModeInfo()">
       <option value="intraday">Intraday (same day)</option>
-      <option value="swing">Swing (2–5 days)</option>
+      <option value="swing" selected>Swing (2–5 days)</option>
       <option value="short">Short-term (1–2 weeks)</option>
       <option value="position">Position (2–4 weeks)</option>
     </select>
@@ -424,8 +429,8 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 <div class="wl-note">Add tickers from Finviz one by one or comma-separated (e.g. SAIA, RRC, INSP, VST)</div>
 <div class="wl-add">
   <input type="text" id="wl-input" placeholder="SAIA, RRC, INSP, VST or one at a time…"/>
-  <button onclick="addWatch()">+ Add</button>
-  <button onclick="clearWatch()" style="background:var(--rdim);border-color:rgba(242,100,90,.3);color:var(--rtxt)">Clear</button>
+  <button onclick="addWatch()" aria-label="Add ticker to watchlist">+ Add</button>
+  <button onclick="clearWatch()" aria-label="Clear watchlist" style="background:var(--rdim);border-color:rgba(242,100,90,.3);color:var(--rtxt)">Clear</button>
 </div>
 <div class="wl-pills" id="wl-pills"></div>
 
@@ -787,7 +792,7 @@ function saveWatch(l){localStorage.setItem(WK,JSON.stringify(l));}
 function renderWatch(){
   const pills=document.getElementById('wl-pills'),list=getWatch();
   if(!list.length){pills.innerHTML='<span style="font-size:12px;color:var(--dim)">No tickers — paste from Finviz or add manually</span>';return;}
-  pills.innerHTML=list.map((t,i)=>`<div class="wl-pill"><span>${t}</span><button onclick="removeWatch(${i})">×</button></div>`).join('');
+  pills.innerHTML=list.map((t,i)=>`<div class="wl-pill"><span>${t}</span><button onclick="removeWatch(${i})" aria-label="Remove ${t} from watchlist">×</button></div>`).join('');
 }
 function addWatch(){
   const inp=document.getElementById('wl-input');
@@ -928,8 +933,22 @@ async function fetchHistorical(ticker,days=60){
     const lastVol=volumes[volumes.length-1]||0;
     const prevVol=volumes[volumes.length-2]||0;
     const todayVol=meta.regularMarketVolume||(lastVol>0?lastVol:prevVol)||0;
-    const earningsMs=meta.earningsTimestamp?meta.earningsTimestamp*1000:null;
-    const daysToEarnings=earningsMs!=null?Math.round((earningsMs-Date.now())/86400000):null;
+    // Yahoo Finance earnings timestamp — check multiple fields as availability varies by ticker
+    const now = Date.now();
+    const earningsCandidates = [
+      meta.earningsTimestamp,
+      meta.earningsTimestampStart,
+      meta.earningsTimestampEnd,
+      meta.earningsCallTimestampStart,
+      meta.earningsCallTimestampEnd,
+    ].filter(t => t != null && t > 0 && (t * 1000) > now - 86400000); // must be recent or future
+    // Pick the soonest future earnings date
+    const nextEarningsTs = earningsCandidates.length > 0
+      ? Math.min(...earningsCandidates) * 1000
+      : null;
+    const daysToEarnings = nextEarningsTs != null
+      ? Math.round((nextEarningsTs - now) / 86400000)
+      : null;
     return{
       price:Number(price.toFixed(2)),
       change_pct:Number(change_pct.toFixed(2)),
@@ -939,6 +958,31 @@ async function fetchHistorical(ticker,days=60){
       daysToEarnings,
       fetchedAt:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
     };
+  }catch(e){return null;}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EARNINGS DATE FETCH — dedicated fallback using Yahoo quote API
+// ═══════════════════════════════════════════════════════════════════════════
+async function fetchEarningsDate(ticker){
+  try{
+    const cb=Date.now();
+    // Try Yahoo Finance quote endpoint which more reliably has earnings dates
+    const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=earningsTimestamp,earningsTimestampStart,earningsTimestampEnd&_cb=${cb}`)}`;
+    const res=await fetch(url,{cache:'no-store',headers:{'Accept':'application/json','Cache-Control':'no-cache'}});
+    if(!res.ok)return null;
+    const data=await res.json();
+    const q=data?.quoteResponse?.result?.[0];
+    if(!q)return null;
+    const now=Date.now();
+    const candidates=[
+      q.earningsTimestamp,
+      q.earningsTimestampStart,
+      q.earningsTimestampEnd,
+    ].filter(t=>t!=null&&t>0&&(t*1000)>now-86400000);
+    if(candidates.length===0)return null;
+    const next=Math.min(...candidates)*1000;
+    return Math.round((next-now)/86400000);
   }catch(e){return null;}
 }
 
@@ -1088,7 +1132,7 @@ async function runScan(){
     <div class="ld-steps">
       <div class="ld-step active" id="ls1">① Refreshing VIX &amp; all sector ETFs…</div>
       <div class="ld-step" id="ls2">② AI proposing 15 candidates across all sectors…</div>
-      <div class="ld-step" id="ls3">③ Fetching real historical data for all 15…</div>
+      <div class="ld-step" id="ls3">③ Fetching real historical data + earnings dates for all candidates…</div>
       <div class="ld-step" id="ls4">④ Calculating real RSI · ATR · ADX · Beta · SMA · Vol…</div>
       <div class="ld-step" id="ls5">⑤ Scoring all 15 · filtering · displaying top 5…</div>
     </div></div>`;
@@ -1226,8 +1270,10 @@ Each of the 15 objects must have:
   ]);
   stepDone('ls3','ls4');
 
-  // Calculate all real indicators
-  const enriched=aiStocks.map((s,idx)=>{
+  // Calculate all real indicators — async map via Promise.all so earnings fallback awaits correctly
+  let enriched;
+  try{
+    enriched=await Promise.all(aiStocks.map(async(s,idx)=>{
     const hist=stockDataArr[idx];
     if(!hist)return{...s,price:0,change_pct:0,vol_surge:0,rsi:null,atr_pct:null,atr_dollar:null,adx:null,beta:null,sma20:null,sma50:null,daysToEarnings:null,live:false};
     const rsi=calcRSI(hist.closes);
@@ -1249,6 +1295,12 @@ Each of the 15 objects must have:
     // Position mode: staged exits
     const t2=mode.t2Mult&&atrDollar?Number((entry+(mode.t2Mult*atrDollar)).toFixed(2)):null;
     const t3=mode.t3Mult&&atrDollar?Number((entry+(mode.t3Mult*atrDollar)).toFixed(2)):null;
+    // Earnings fallback: if v8 chart didn't return earnings, try dedicated quote API
+    let daysToEarnings=hist.daysToEarnings;
+    if(daysToEarnings==null){
+      daysToEarnings=await fetchEarningsDate(s.ticker);
+    }
+
     return{
       ...s,
       price:hist.price,change_pct:hist.change_pct,
@@ -1256,10 +1308,13 @@ Each of the 15 objects must have:
       rsi,atr_pct:atrObj?atrObj.pct:null,atr_dollar:atrDollar,adx,beta,sma20,sma50,
       entry_price:entry,stop_loss:stop,exit_price:t1,t2_price:t2,t3_price:t3,
       stop_mult_used:stopMult,t1_mult_used:t1Mult,
-      daysToEarnings:hist.daysToEarnings,fetchedAt:hist.fetchedAt,
+      daysToEarnings,fetchedAt:hist.fetchedAt,
       live:true
     };
-  });
+  }));}catch(e){
+    grid.innerHTML=`<div class="empty">Data fetch error: ${e.message}<br><span class="hint">Check network and try again.</span></div>`;
+    btn.disabled=false;btn.textContent='▶ Run scan — top 5 from 15';return;
+  }
 
   stepDone('ls4','ls5');
 
@@ -1362,8 +1417,12 @@ function renderCards(stocks,holding,regime,totalCandidates){
           earnHtml=`<div class="earn-banner clear">ℹ Earnings ${dLabel} — outside immediate risk window. Monitor as date approaches.</div>`;
         }
       }
+    } else if(de!=null&&de<0){
+      // Past earnings — show when it was
+      earnHtml=`<div class="earn-banner clear">✓ Last earnings ${Math.abs(de)} days ago — next date not yet announced</div>`;
     } else {
-      earnHtml=`<div class="earn-banner clear" style="display:none"></div>`;
+      // null — date genuinely unknown
+      earnHtml=`<div class="earn-banner clear" style="opacity:.6">📅 Earnings date not available from Yahoo Finance — check manually on Finviz</div>`;
     }
 
     // Sector momentum
@@ -1405,19 +1464,19 @@ function renderCards(stocks,holding,regime,totalCandidates){
         <div class="se-box">
           <div class="se-label">Target 1 — Week 1</div>
           <div class="se-pct">+${fmt((s.exit_price/s.entry_price-1)*100,1)}%</div>
-          <div class="se-price">$${fmt(s.exit_price)}</div>
+          <div class="se-price t1">$${fmt(s.exit_price)}</div>
           <div class="se-size">Take 50% off</div>
         </div>
         <div class="se-box">
           <div class="se-label">Target 2 — Week 2</div>
           <div class="se-pct">+${fmt((s.t2_price/s.entry_price-1)*100,1)}%</div>
-          <div class="se-price">$${fmt(s.t2_price)}</div>
+          <div class="se-price t2">$${fmt(s.t2_price)}</div>
           <div class="se-size">Take 30% off</div>
         </div>
         ${s.t3_price?`<div class="se-box">
           <div class="se-label">Target 3 — Week 4</div>
           <div class="se-pct">+${fmt((s.t3_price/s.entry_price-1)*100,1)}%</div>
-          <div class="se-price">$${fmt(s.t3_price)}</div>
+          <div class="se-price t3">$${fmt(s.t3_price)}</div>
           <div class="se-size">Final 20%</div>
         </div>`:''}
       </div>`:'';
