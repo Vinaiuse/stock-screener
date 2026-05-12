@@ -63,6 +63,10 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .model-row{display:flex;gap:6px;flex-wrap:wrap}
 .model-btn{background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
 .model-btn.active{background:var(--gdim);border-color:rgba(86,227,159,.3);color:var(--green)}
+.model-tag{font-size:8px;padding:1px 4px;border-radius:3px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:3px}
+.model-tag.best{background:rgba(86,227,159,.2);color:var(--gtxt)}
+.model-tag.new{background:rgba(90,180,242,.2);color:var(--btxt)}
+.model-tag.fast{background:rgba(242,194,90,.15);color:var(--atxt)}
 
 /* Controls */
 .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
@@ -303,7 +307,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 <div class="hdr">
   <div>
     <div class="logo">Stock<span>Screen</span><sup>PRO</sup></div>
-    <div class="tagline">15 candidates · Top 5 by score · Real RSI·ATR·ADX·Beta · 4 holding modes · All sectors</div>
+    <div class="tagline">Full NYSE/NASDAQ universe · Top 5 by score · Real RSI·ATR·ADX·Beta · 4 holding modes · All sectors</div>
   </div>
   <div class="clock-block">
     <div class="time" id="clk">--:--:--</div>
@@ -346,9 +350,10 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
     <span id="key-st" class="ks"></span>
   </div>
   <div class="model-row">
-    <button class="model-btn active" data-model="openai/gpt-4o-mini" onclick="pickModel(this)">GPT-4o mini</button>
-    <button class="model-btn" data-model="openai/gpt-4o" onclick="pickModel(this)">GPT-4o</button>
-    <button class="model-btn" data-model="meta/meta-llama-3.1-70b-instruct" onclick="pickModel(this)">Llama 3.1 70B</button>
+    <button class="model-btn active" data-model="openai/gpt-4o" onclick="pickModel(this)">GPT-4o <span class="model-tag best">Best</span></button>
+    <button class="model-btn" data-model="openai/gpt-4.1" onclick="pickModel(this)">GPT-4.1 <span class="model-tag new">New</span></button>
+    <button class="model-btn" data-model="openai/gpt-4o-mini" onclick="pickModel(this)">GPT-4o mini <span class="model-tag fast">Fast</span></button>
+    <button class="model-btn" data-model="meta/llama-3.3-70b-instruct" onclick="pickModel(this)">Llama 3.3 70B</button>
     <button class="model-btn" data-model="mistral-ai/mistral-large-2411" onclick="pickModel(this)">Mistral Large</button>
   </div>
 </div>
@@ -406,7 +411,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
     <button class="fv-copy-btn" onclick="copyFinvizTickers()">Copy tickers from results</button>
   </div>
   <div class="fv-note">
-    After opening Finviz: click <strong>Technical</strong> view in results → sort by <strong>Relative Volume</strong> descending → copy top 8–10 tickers → paste into Watchlist above → Run scan
+    Use Finviz to pre-screen candidates manually: click <strong>Technical</strong> view → sort by <strong>Relative Volume</strong> descending → copy top 8–10 tickers → paste into Watchlist. These will be guaranteed candidates alongside the AI's open-universe picks.
   </div>
   <div class="fv-url-box" id="fv-url" onclick="copyFinvizUrl()" title="Click to copy"></div>
 </div>
@@ -420,7 +425,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 <div class="grid" id="grid">
   <div class="empty">
     Enter your GitHub token above and hit <strong>▶ Run scan — top 5 from 15</strong><br>
-    <span class="hint">AI proposes 15 candidates across all sectors → real data scores all 15 → top 5 displayed</span>
+    <span class="hint">AI picks 15 best setups from the full NYSE/NASDAQ universe → real data scores all 15 → top 5 displayed</span>
   </div>
 </div>
 
@@ -537,25 +542,27 @@ const REGIMES={
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COMPLETE STOCK UNIVERSE — all sectors including utilities
+// DYNAMIC UNIVERSE — AI selects freely from all NYSE/NASDAQ stocks
+// Criteria injected into the prompt; no hardcoded ticker list
 // ═══════════════════════════════════════════════════════════════════════════
-const UNIVERSE=`Propose 15 candidates from these REAL NYSE/NASDAQ stocks ($3B-$30B market cap):
-
-TECHNOLOGY ($3B-$20B): DDOG,BILL,GTLB,TOST,APPF,PCTY,CWAN,ASAN,FRSH,MNDY,BRZE,ZI,S,SMAR,GWRE,JAMF,NTNX,ENFN,DUOL,RDDT,APP,CELH
-FINANCIALS ($3B-$20B): HOOD,IBKR,ALLY,RJF,EWBC,SNV,WBS,CATY,FFIN,BANF,HTLF,BOKF,SFNC,CVBF,RYAN,ERIE,HCI
-ENERGY ($3B-$20B): RRC,AR,CTRA,NOG,VTLE,SM,CHRD,MGY,MTDR,CNX,CRK,ESTE,PR,BORR,DNOW
-INDUSTRIALS ($3B-$20B): SAIA,XPO,GNRC,ESAB,GTES,ASGN,KTOS,HAYW,UHAL,HTLD,RUSHA,WERN,ARCB,ODFL,STNG
-HEALTHCARE ($3B-$20B): INSP,TMDX,RDNT,IRTC,ACAD,DOCS,OMCL,PRCT,NVCR,AMPH,ITCI,VRDN,ERAS,RXST,HIMS
-UTILITIES-POWER ($3B-$20B): VST,NRG,CEG,AES,ETR,PNW,OGE,CLNE,BE,FCEL — include if ATR>3% and momentum catalyst
-CONSUMER DISC ($3B-$20B): WING,BROS,TXRH,CAVA,SHAK,DNUT,CAKE,BJRI,SG,PTLO,FAT,MODG,BOOT,PLAY
-MATERIALS ($3B-$20B): MP,CRS,CMC,ZEUS,IIIN,KALU,CENX,HCC,AMR,TROX,CSTM
-COMMUNICATION ($3B-$20B): MGNI,TTD,DV,IAS,ZETA,CMPR,LPSN,CARS,CDW
-CONSUMER STAPLES ($3B-$20B): COKE,CELH,DINO,VITL,FRPT — only if high momentum`;
+// Sector distribution guidance (used in prompt, not a stock list)
+const SECTOR_DIST={
+  all:'Distribute across ALL sectors: Tech(2-3), Financials(2), Energy(1-2), Industrials(1-2), Healthcare(2), Utilities/Power(1), Consumer Disc(1-2), Materials(1), Communication(1). Increase allocation to sectors with positive ETF momentum today.',
+  tech:'All 15 from Technology — sub-sectors: software, semiconductors, cloud infrastructure, cybersecurity, fintech, AI/ML platforms.',
+  finance:'All 15 from Financials — sub-sectors: regional banks, brokerages, insurance, specialty finance, payment processors.',
+  energy:'All 15 from Energy — sub-sectors: E&P, midstream, oilfield services, LNG, renewables with momentum.',
+  industrial:'All 15 from Industrials — sub-sectors: transportation, defense, aerospace, machinery, logistics, staffing.',
+  healthcare:'All 15 from Healthcare — sub-sectors: medtech, biotech, healthcare IT, specialty pharma, hospitals.',
+  utilities:'All 15 from Utilities/Power — sub-sectors: independent power, nuclear, renewable energy, grid operators.',
+  consumer:'All 15 from Consumer Discretionary — sub-sectors: restaurants, retail, leisure, e-commerce, auto.',
+  materials:'All 15 from Materials — sub-sectors: metals, mining, chemicals, specialty materials, steel.',
+  comms:'All 15 from Communication Services — sub-sectors: digital advertising, streaming, telecom, social, publishing.'
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PERSIST / MODEL
 // ═══════════════════════════════════════════════════════════════════════════
-let selectedModel='openai/gpt-4o-mini';
+let selectedModel='openai/gpt-4o';
 function pickModel(btn){document.querySelectorAll('.model-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');selectedModel=btn.dataset.model;localStorage.setItem('ss_model4',selectedModel);}
 const KK='ss_gh_key4',PK='ss_prefs4',WK='ss_watch4',JK='ss_journal4';
 function saveKey(){const v=document.getElementById('api-key').value.trim();if(!v.startsWith('ghp_')&&!v.startsWith('github_pat_')&&!v.startsWith('gho_')){showKSt('Must start with ghp_ or github_pat_','err');return;}localStorage.setItem(KK,v);showKSt('Saved ✓','ok');}
@@ -1116,6 +1123,66 @@ function getTier(score){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TICKER VALIDATION GUARD
+// Three-layer check: format → dedup → Yahoo Finance ping
+// ═══════════════════════════════════════════════════════════════════════════
+function isValidTickerFormat(t){
+  return /^[A-Z]{1,5}(\.[A-Z]{1,2})?$/.test((t||'').trim().toUpperCase());
+}
+
+async function validateTickers(candidates){
+  const seen=new Set();
+  const formatPassed=[];
+
+  // Layer 1 — format check + dedup
+  for(const s of candidates){
+    const t=(s.ticker||'').trim().toUpperCase();
+    if(!isValidTickerFormat(t)){
+      console.warn(`[Validation] Dropped — invalid format: "${s.ticker}"`);
+      continue;
+    }
+    if(seen.has(t)){
+      console.warn(`[Validation] Dropped — duplicate: "${t}"`);
+      continue;
+    }
+    seen.add(t);
+    formatPassed.push({...s,ticker:t});
+  }
+
+  // Layer 2 — Yahoo Finance ping (5-day lightweight fetch)
+  // Watchlist tickers skip the ping — user added them intentionally
+  const pingResults=await Promise.all(
+    formatPassed.map(async s=>{
+      if(s._fromWatchlist)return{s,ok:true,reason:'watchlist'};
+      try{
+        const end=Math.floor(Date.now()/1000);
+        const start=end-(7*24*60*60);
+        const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.ticker}?interval=1d&period1=${start}&period2=${end}`)}`;
+        const res=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(6000)});
+        if(!res.ok)return{s,ok:false,reason:`HTTP ${res.status}`};
+        const data=await res.json();
+        const result=data?.chart?.result?.[0];
+        const hasData=result&&result.meta&&result.meta.regularMarketPrice>0;
+        return{s,ok:hasData,reason:hasData?'ok':'no price data'};
+      }catch(e){
+        return{s,ok:false,reason:e.name==='TimeoutError'?'timeout':e.message};
+      }
+    })
+  );
+
+  const valid=[];const dropped=[];
+  pingResults.forEach(({s,ok,reason})=>{
+    if(ok){valid.push(s);}
+    else{dropped.push(s.ticker);console.warn(`[Validation] Dropped — Yahoo ping failed (${reason}): ${s.ticker}`);}
+  });
+
+  if(dropped.length>0){
+    console.info(`[Validation] ${valid.length} valid · ${dropped.length} dropped: ${dropped.join(', ')}`);
+  }
+  return{valid,dropped};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN SCAN
 // ═══════════════════════════════════════════════════════════════════════════
 function setStatus(m){document.getElementById('status-bar').textContent=m;}
@@ -1131,10 +1198,10 @@ async function runScan(){
   grid.innerHTML=`<div class="ld-wrap"><div class="ld"><span></span><span></span><span></span></div>
     <div class="ld-steps">
       <div class="ld-step active" id="ls1">① Refreshing VIX &amp; all sector ETFs…</div>
-      <div class="ld-step" id="ls2">② AI proposing 15 candidates across all sectors…</div>
-      <div class="ld-step" id="ls3">③ Fetching real historical data + earnings dates for all candidates…</div>
-      <div class="ld-step" id="ls4">④ Calculating real RSI · ATR · ADX · Beta · SMA · Vol…</div>
-      <div class="ld-step" id="ls5">⑤ Scoring all 15 · filtering · displaying top 5…</div>
+      <div class="ld-step" id="ls2">② AI selecting 15 best candidates from full NYSE/NASDAQ universe…</div>
+      <div class="ld-step" id="ls3">③ Validating tickers — pinging Yahoo Finance to confirm each is real…</div>
+      <div class="ld-step" id="ls4">④ Fetching real historical data + earnings dates for valid candidates…</div>
+      <div class="ld-step" id="ls5">⑤ Calculating RSI · ATR · ADX · Beta · SMA · Vol · scoring · top 5…</div>
     </div></div>`;
   setStatus('');
   const stepDone=(id,next)=>{const el=document.getElementById(id);if(el)el.className='ld-step done';const nl=document.getElementById(next);if(nl)nl.className='ld-step active';};
@@ -1164,8 +1231,8 @@ async function runScan(){
   if((MC.etfs['XLB']||0)>0.1)greenSectors.push('Materials');
 
   const sectorNote=sector==='all'
-    ?`across ALL sectors — distribute candidates: Tech(2), Finance(2), Energy(2), Industrial(1), Healthcare(2), Utilities/Power(1), Consumer(2), Materials(1), Comms(1), Other(1). Increase count for green sectors: ${greenSectors.length?greenSectors.join(', '):'none identified'}`
-    :`focused on ${sector} sector — all 15 candidates from this sector`;
+    ?`across ALL sectors — ${SECTOR_DIST.all} Green sectors today: ${greenSectors.length?greenSectors.join(', '):'none identified yet'}`
+    :`focused on ${sector} sector — ${SECTOR_DIST[sector]||'all subsectors'}`;
 
   // Watchlist handling — split into guaranteed slots + hint
   // Watchlist tickers are GUARANTEED to be fetched and scored
@@ -1181,45 +1248,74 @@ async function runScan(){
     position:'entry_time: "Pullback to 20d SMA" or specific time. exit_time: MUST be a date range like "May 19 – Jun 4" or "Weeks 2-4". NEVER use same-day times.'
   };
 
-  // Step 2 — AI proposes 15 candidates
-  const prompt=`You are a quantitative stock screener. Date: ${today}.
-Regime: ${regime.desc}
-Holding mode: ${mode.label} (${mode.duration}) — market cap range ${mode.mktcap}
-Sector focus: ${sectorNote}${watchNote}
+  // Step 2 — AI proposes 15 candidates from the full NYSE/NASDAQ universe
+  const prompt=`You are an expert quantitative stock screener with full knowledge of NYSE and NASDAQ-listed equities. Today: ${today}.
 
-${UNIVERSE}
+MARKET REGIME: ${regime.desc}
+HOLDING MODE: ${mode.label} (${mode.duration})
+MARKET CAP RANGE: ${mode.mktcap}
+SECTOR FOCUS: ${sectorNote}${watchNote}
 
-STRICT RULES:
-- Propose EXACTLY 15 real tickers from the universe above
-- Market cap must be within ${mode.mktcap}
-- Include utilities (VST,NRG,CEG etc) if they show momentum — DO NOT exclude utilities
-- Prefer stocks with recent catalyst (earnings beat, upgrade, sector tailwind, product news)
-- Green sectors today: ${greenSectors.length?greenSectors.join(', '):'check ETFs'}
+YOUR TASK: Propose EXACTLY 15 real, currently-listed NYSE/NASDAQ stocks that best match the regime and mode criteria below. You have full freedom to select from the entire universe — do NOT limit yourself to a predefined list. Use your knowledge of current market conditions, recent earnings, sector rotation, and momentum to identify the most relevant setups.
+
+SELECTION CRITERIA (all must be satisfied):
+1. Market cap ${mode.mktcap} — mid-cap sweet spot for momentum trades
+2. RSI (14) likely in ${mode.rsiMin}–${mode.rsiMax} range based on recent price action
+3. ATR% likely ${mode.atrMin}%–${mode.atrMax}% — sufficient volatility for the hold period
+4. Beta ${mode.betaMin}–${mode.betaMax} vs SPY — appropriate market sensitivity
+5. Relative volume elevated (>${mode.minVol}× recent average) — institutional interest
+6. Price above key moving averages (20d, 50d preferred)
+7. No earnings within ${mode.earningsAvoidDays} days — avoids binary event risk
+8. Regime fit: ${regime.desc}
+
+QUALITY SIGNALS TO PRIORITISE:
+- Recent earnings beat or raised guidance (last 30 days)
+- Analyst upgrades or price target increases
+- Sector ETF tailwind: ${greenSectors.length?'Today\'s green sectors: '+greenSectors.join(', '):'check sector momentum'}
+- Breakout from consolidation or pullback to key support
+- High short interest + positive catalyst (potential squeeze)
+- Insider buying or institutional accumulation signals
+- New product launch, contract win, or regulatory approval
+
+REGIME-SPECIFIC GUIDANCE:
+${activeRegime==='highvol_highrate'?'• Prefer FCF-positive, low-debt, dividend-paying or buyback stocks\n• Avoid high P/E unprofitable growth\n• Energy, financials, defensive consumer names score well':activeRegime==='lowvol_lowrate'?'• Growth stocks acceptable, wider P/E tolerance\n• Momentum and expansion plays favoured\n• Tech, consumer discretionary, small/mid growth':
+'• Balanced approach — quality momentum names\n• Mid-cap $3B–$20B sweet spot\n• Profitable companies with catalyst preferred'}
+
+HOLDING-MODE SPECIFIC:
+${holding==='intraday'?'• Focus on highest-volume, highest-ATR names with intraday range\n• Liquid names only, min avg volume 2M+\n• Pre-market catalyst preferred':
+holding==='swing'?'• 2-5 day setups: technical breakouts, earnings reactions, sector rotations\n• Avg volume 500K+ sufficient\n• Entry on pullback or breakout confirmation':
+holding==='short'?'• 1-2 week holds: trend continuation plays\n• Look for stocks in clear uptrends above 20d SMA\n• Moderate volume fine':
+'• 2-4 week position holds: fundamental + technical alignment\n• Staged exit candidates: T1 week 1, T2 week 2, T3 week 4\n• Quality over speed'}
+
+STRICT OUTPUT RULES:
 - ${exitInstr[holding]}
-- NEVER use fictional names. Return ONLY a JSON array, no markdown, no backticks.
+- Return ONLY a valid JSON array of exactly 15 objects — no markdown, no backticks, no preamble
+- Every ticker MUST be a real, currently-listed NYSE or NASDAQ stock
+- NEVER invent or hallucinate ticker symbols
+- Use your best knowledge of which stocks are currently showing momentum setups
 
-Each of the 15 objects must have:
+Each object must have exactly these fields:
 {
-  ticker: string (real NYSE/NASDAQ ticker),
-  name: string (full company name),
-  sector: string (specific sector e.g. "Utilities/Power" not just "Utilities"),
-  signal: "STRONG BUY"|"BUY"|"WATCH",
-  stop_mult: number (ATR multiplier 1.0-2.0),
-  t1_mult: number (ATR multiplier for target 1, 1.5-4.0),
-  entry_time: string,
-  exit_time: string (MUST follow holding mode rule above),
-  catalyst: string (max 8 words, specific real catalyst),
-  rationale: string (max 18 words),
-  card_type: "bull"|"str"|"neu"
+  "ticker": "string (real NYSE/NASDAQ ticker symbol)",
+  "name": "string (full official company name)",
+  "sector": "string (specific: e.g. Cybersecurity, Regional Banks, E&P, Medtech, Restaurant, not just Technology)",
+  "signal": "STRONG BUY|BUY|WATCH",
+  "stop_mult": number (ATR stop multiplier, 1.0–2.0),
+  "t1_mult": number (ATR target 1 multiplier, 1.5–4.0),
+  "entry_time": "string",
+  "exit_time": "string (follow holding mode rule above)",
+  "catalyst": "string (max 10 words — specific recent catalyst)",
+  "rationale": "string (max 20 words — why this fits the regime and mode)",
+  "card_type": "bull|str|neu"
 }`;
 
   let aiStocks=[];
   try{
     const res=await fetch('https://models.github.ai/inference/chat/completions',{
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:selectedModel,max_tokens:2500,temperature:0.25,
+      body:JSON.stringify({model:selectedModel,max_tokens:3500,temperature:0.3,
         messages:[
-          {role:'system',content:'You are an expert quantitative stock screener. Only use real NYSE/NASDAQ tickers from the provided universe. Include utilities and all sectors. Never use fictional names. Respond with pure JSON arrays only.'},
+          {role:'system',content:'You are an expert quantitative stock screener with deep knowledge of all NYSE and NASDAQ equities. You select stocks based on technical momentum, fundamental quality, and macro regime fit. You always use real, currently-listed ticker symbols — never hallucinate or invent tickers. You respond ONLY with a valid JSON array, no explanation, no markdown, no backticks.'},
           {role:'user',content:prompt}
         ]})
     });
@@ -1263,12 +1359,25 @@ Each of the 15 objects must have:
     btn.disabled=false;btn.textContent='▶ Run scan — top 5 from 15';return;
   }
 
-  // Step 3+4 — Fetch real data + SPY for beta
+  // Step 3 — Validate tickers (format check + Yahoo Finance ping)
+  setStatus('Validating tickers…');
+  const {valid:validatedStocks,dropped:droppedTickers}=await validateTickers(aiStocks);
+  if(droppedTickers.length>0){
+    setStatus(`⚠ Dropped ${droppedTickers.length} invalid ticker${droppedTickers.length>1?'s':''}: ${droppedTickers.join(', ')} — continuing with ${validatedStocks.length} valid`);
+    await new Promise(r=>setTimeout(r,1800)); // brief pause so user can read
+  }
+  if(validatedStocks.length===0){
+    grid.innerHTML='<div class="empty">All AI-proposed tickers failed validation.<br><span class="hint">Try again — the model may have hallucinated. Switching to GPT-4o or adding Watchlist tickers may help.</span></div>';
+    btn.disabled=false;btn.textContent='▶ Run scan — top 5 from 15';return;
+  }
+  aiStocks=validatedStocks;
+  stepDone('ls3','ls4');
+
+  // Step 4 — Fetch real data + SPY for beta
   const [spyData,...stockDataArr]=await Promise.all([
     fetchHistorical('SPY',mode.histDays+5),
     ...aiStocks.map(s=>fetchHistorical(s.ticker,mode.histDays))
   ]);
-  stepDone('ls3','ls4');
 
   // Calculate all real indicators — async map via Promise.all so earnings fallback awaits correctly
   let enriched;
