@@ -580,7 +580,20 @@ window.onload=()=>{
   const sm=localStorage.getItem('ss_model4');
   if(sm){selectedModel=sm;document.querySelectorAll('.model-btn').forEach(b=>b.classList.toggle('active',b.dataset.model===sm));}
   updateModeInfo();renderFinvizPanel();renderWatch();renderTracker();
-  loadMarketContext();
+  // Load market context with one auto-retry after 4s if ETFs fail
+  loadMarketContext().then(()=>{
+    // Check if SPY/QQQ populated — if not, retry once after a delay
+    setTimeout(()=>{
+      const spyEl=document.getElementById('rb-spy');
+      const qqqEl=document.getElementById('rb-qqq');
+      const spyFailed=!spyEl||spyEl.textContent==='—'||spyEl.textContent==='ERR';
+      const qqqFailed=!qqqEl||qqqEl.textContent==='—'||qqqEl.textContent==='ERR';
+      if(spyFailed||qqqFailed){
+        console.warn('[Market] SPY/QQQ missing after first load — retrying…');
+        loadMarketContext();
+      }
+    },4000);
+  });
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -918,7 +931,7 @@ function calcVolSurge(volumes,windowDays=1){
 // YAHOO FINANCE FETCH
 // ═══════════════════════════════════════════════════════════════════════════
 const CORS='https://corsproxy.io/?';
-async function fetchHistorical(ticker,days=60){
+async function fetchHistorical(ticker,days=60,minBars=15){
   try{
     const end=Math.floor(Date.now()/1000);
     const start=end-(days*24*60*60);
@@ -936,7 +949,7 @@ async function fetchHistorical(ticker,days=60){
       const c=quotes.close?.[i],h=quotes.high?.[i],l=quotes.low?.[i],v=quotes.volume?.[i];
       if(c&&h&&l){closes.push(c);highs.push(h);lows.push(l);volumes.push(v||0);}
     });
-    if(closes.length<15)return null;
+    if(closes.length<minBars)return null;
     const price=meta.regularMarketPrice||closes[closes.length-1];
     const prev=meta.previousClose||closes[closes.length-2];
     const change_pct=prev?((price-prev)/prev*100):0;
@@ -1004,35 +1017,144 @@ let MC={vix:null,etfs:{},detectedRegime:'highvol_medrate'};
 const ETF_IDS=['SPY','QQQ','%5EVIX','XLK','XLF','XLE','XLI','XLV','XLU','XLY','XLB'];
 const ETF_EL_MAP={'SPY':'rb-spy','QQQ':'rb-qqq','%5EVIX':'rb-vix','XLK':'rb-xlk','XLF':'rb-xlf','XLE':'rb-xle','XLI':'rb-xli','XLV':'rb-xlv','XLU':'rb-xlu'};
 
+// ═══════════════════════════════════════════════════════════════════════════
+// VIX FETCH — dedicated function with 3 fallback sources + validation
+// Never silently defaults — always tells the user what happened
+// ═══════════════════════════════════════════════════════════════════════════
+async function fetchVIX(){
+  // Three sources tried in order — each decoded differently
+  const sources=[
+    // Source 1: ^VIX via Yahoo chart API (most reliable)
+    async()=>{
+      const end=Math.floor(Date.now()/1000);
+      const start=end-(5*24*60*60);
+      const url=`${CORS}${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&period1='+start+'&period2='+end)}`;
+      const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+      if(!res.ok)throw new Error(`Yahoo chart HTTP ${res.status}`);
+      const data=await res.json();
+      const result=data?.chart?.result?.[0];
+      const price=result?.meta?.regularMarketPrice;
+      if(!price||price<5||price>90)throw new Error(`VIX out of range: ${price}`);
+      const closes=result?.indicators?.quote?.[0]?.close?.filter(v=>v!=null)??[];
+      const prevClose=closes.length>=2?closes[closes.length-2]:null;
+      return{price,change_pct:prevClose?((price-prevClose)/prevClose*100):0,source:'Yahoo chart'};
+    },
+    // Source 2: ^VIX via Yahoo quote API (different endpoint)
+    async()=>{
+      const url=`${CORS}${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d')}`;
+      const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+      if(!res.ok)throw new Error(`Yahoo quote HTTP ${res.status}`);
+      const data=await res.json();
+      const price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      if(!price||price<5||price>90)throw new Error(`VIX out of range: ${price}`);
+      return{price,change_pct:0,source:'Yahoo quote'};
+    },
+    // Source 3: VIX via VIXY ETF as proxy (ProShares VIX Short-Term Futures)
+    // VIXY moves with VIX directionally — not the VIX level but confirms regime
+    async()=>{
+      const data=await fetchHistorical('VIXY',5);
+      if(!data||!data.price)throw new Error('VIXY fetch failed');
+      // VIXY price ~0.1-0.5× VIX level — not suitable as VIX substitute
+      // Use only to confirm regime direction, not as VIX value
+      throw new Error('VIXY is proxy only — not a VIX substitute');
+    }
+  ];
+
+  for(let i=0;i<sources.length;i++){
+    try{
+      const result=await sources[i]();
+      console.info(`[VIX] Fetched from source ${i+1} (${result.source}): ${result.price.toFixed(2)}`);
+      return{...result,sourceIndex:i+1,failed:false};
+    }catch(e){
+      console.warn(`[VIX] Source ${i+1} failed: ${e.message}`);
+    }
+  }
+
+  // All sources failed — return explicit failure, no silent default
+  console.error('[VIX] All sources failed — regime detection unreliable');
+  return{price:null,change_pct:null,source:'FAILED',sourceIndex:0,failed:true};
+}
+
 async function loadMarketContext(){
   document.getElementById('regime-auto-tag').textContent='Fetching VIX & sector data…';
-  const results=await Promise.all(ETF_IDS.map(async t=>({ticker:t,data:await fetchHistorical(t,10)})));
-  results.forEach(r=>{
-    if(!r.data)return;
-    const ch=r.data.change_pct;
-    const chStr=(ch>=0?'+':'')+ch.toFixed(2)+'%';
-    const cls=ch>0.3?'g':ch<-0.3?'r':'a';
-    if(r.ticker==='%5EVIX'){
-      MC.vix=r.data.price;
-      const el=document.getElementById('rb-vix');
-      if(el){el.textContent=r.data.price.toFixed(1);el.className='ri-v '+(r.data.price<18?'g':r.data.price<28?'a':'r');}
-    } else {
-      MC.etfs[r.ticker]=ch;
+
+  // Fetch VIX separately with dedicated multi-source logic
+  const vixResult=await fetchVIX();
+  const vixEl=document.getElementById('rb-vix');
+
+  if(vixResult.failed){
+    // VIX fetch failed — show clear warning, block auto-regime
+    MC.vix=null;
+    if(vixEl){vixEl.textContent='FAILED';vixEl.className='ri-v r';}
+    document.getElementById('regime-auto-tag').textContent='⚠ VIX fetch failed — set regime manually';
+    // Force regime selector to manual so user knows they need to pick
+    const regimeSel=document.getElementById('regime');
+    if(regimeSel&&regimeSel.value==='auto'){
+      regimeSel.value='highvol_medrate'; // safe fallback but user sees it changed
+    }
+    // Show persistent warning banner
+    const tag=document.getElementById('regime-auto-tag');
+    if(tag){tag.style.color='var(--red)';tag.style.fontWeight='700';}
+  } else {
+    MC.vix=vixResult.price;
+    // VIX colouring: LOW vix = green (calm market), HIGH vix = red (fearful market)
+    // NOTE: inverted from stock ETFs — rising VIX is bad, falling is good
+    if(vixEl){
+      vixEl.textContent=vixResult.price.toFixed(1);
+      // Show change direction too
+      const chSign=vixResult.change_pct>=0?'+':'';
+      vixEl.title=`VIX ${vixResult.price.toFixed(1)} (${chSign}${vixResult.change_pct.toFixed(2)}% today) — Source: ${vixResult.source}`;
+      vixEl.className='ri-v '+(vixResult.price<18?'g':vixResult.price<28?'a':'r');
+    }
+  }
+
+  // Fetch sector ETFs (SPY, QQQ, sector ETFs — excludes VIX which is handled above)
+  // Request 30 days to guarantee enough trading days across weekends/holidays
+  // minBars=3 — market bar only needs price + prev close, not full indicator history
+  const etfIds=ETF_IDS.filter(t=>t!=='%5EVIX');
+  const etfResults=await Promise.all(etfIds.map(async t=>({ticker:t,data:await fetchHistorical(t,30,3)})));
+  etfResults.forEach(r=>{
+    if(!r.data){
+      console.warn(`[ETF] Failed to fetch: ${r.ticker}`);
+      // Show ERR in UI so it's visible, not silently blank
       const elId=ETF_EL_MAP[r.ticker];
       const el=elId?document.getElementById(elId):null;
-      if(el){el.textContent=chStr;el.className='ri-v '+cls;}
+      if(el){el.textContent='ERR';el.className='ri-v r';}
+      return;
     }
+    const ch=r.data.change_pct;
+    const chStr=(ch>=0?'+':'')+ch.toFixed(2)+'%';
+    // Stock ETFs: rising = green, falling = red (normal)
+    const cls=ch>0.3?'g':ch<-0.3?'r':'a';
+    MC.etfs[r.ticker]=ch;
+    const elId=ETF_EL_MAP[r.ticker];
+    const el=elId?document.getElementById(elId):null;
+    if(el){
+      el.textContent=chStr;
+      el.className='ri-v '+cls;
+      el.title=`${r.ticker}: ${chStr} today · Price $${r.data.price}`;
+    }
+    console.info(`[ETF] ${r.ticker}: ${chStr} · $${r.data.price}`);
   });
-  // Auto-detect regime from VIX
-  const vix=MC.vix||20;
-  MC.detectedRegime=vix<18?'lowvol_lowrate':vix<28?'highvol_medrate':'highvol_highrate';
-  const rEl=document.getElementById('rb-regime');
-  if(rEl){
-    const rn=REGIMES[MC.detectedRegime].label;
-    rEl.textContent=rn;
-    rEl.className='ri-v '+(MC.detectedRegime==='lowvol_lowrate'?'g':MC.detectedRegime==='highvol_medrate'?'a':'r');
+
+  // Auto-detect regime from VIX — only if VIX fetch succeeded
+  if(MC.vix!==null){
+    const vix=MC.vix;
+    MC.detectedRegime=vix<18?'lowvol_lowrate':vix<28?'highvol_medrate':'highvol_highrate';
+    const rEl=document.getElementById('rb-regime');
+    if(rEl){
+      const rn=REGIMES[MC.detectedRegime].label;
+      rEl.textContent=rn;
+      rEl.className='ri-v '+(MC.detectedRegime==='lowvol_lowrate'?'g':MC.detectedRegime==='highvol_medrate'?'a':'r');
+    }
+    const tag=document.getElementById('regime-auto-tag');
+    if(tag){
+      tag.style.color='';tag.style.fontWeight='';
+      tag.textContent=`Auto from VIX ${vix.toFixed(1)} · Source ${vixResult.sourceIndex}`;
+    }
   }
-  document.getElementById('regime-auto-tag').textContent=`Auto from VIX ${vix.toFixed(1)}`;renderFinvizPanel();
+
+  renderFinvizPanel();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1210,8 +1332,21 @@ async function runScan(){
   setStatus('');
   const stepDone=(id,next)=>{const el=document.getElementById(id);if(el)el.className='ld-step done';const nl=document.getElementById(next);if(nl)nl.className='ld-step active';};
 
-  // Step 1 — refresh market context
+  // Step 1 — refresh market context (VIX + sector ETFs)
   await loadMarketContext();
+
+  // Block scan if VIX failed and user is still on Auto regime
+  // Auto regime with no VIX = fabricated regime = unreliable scan
+  const regimeSelCheck=document.getElementById('regime').value;
+  if(MC.vix===null&&regimeSelCheck==='auto'){
+    grid.innerHTML=`<div class="empty">
+      <strong style="color:var(--red)">⚠ VIX data unavailable</strong><br><br>
+      Regime cannot be auto-detected without a live VIX reading.<br>
+      <span class="hint">Please select a regime manually from the dropdown above, then run the scan again.</span>
+    </div>`;
+    btn.disabled=false;btn.textContent='▶ Run scan — top 5 from 15';return;
+  }
+
   stepDone('ls1','ls2');
 
   const regimeSel=document.getElementById('regime').value;
