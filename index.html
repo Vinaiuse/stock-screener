@@ -411,7 +411,8 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
     <button class="fv-copy-btn" onclick="copyFinvizTickers()">Copy tickers from results</button>
   </div>
   <div class="fv-note">
-    Use Finviz to pre-screen candidates manually: click <strong>Technical</strong> view → sort by <strong>Relative Volume</strong> descending → copy top 8–10 tickers → paste into Watchlist. These will be guaranteed candidates alongside the AI's open-universe picks.
+    <strong>How to use:</strong> Click <em>↗ Open Finviz</em> below — page opens in Technical view, already filtered and sorted by Relative Volume → copy the top 8–10 tickers from the Ticker column → paste into the Watchlist below.<br><br>
+    <strong>Note:</strong> Beta and Week Performance must be checked manually — Finviz does not support them via URL. Free tier data is delayed 15–20 min, fine for swing/position mode but not ideal for intraday.
   </div>
   <div class="fv-url-box" id="fv-url" onclick="copyFinvizUrl()" title="Click to copy"></div>
 </div>
@@ -686,23 +687,25 @@ function buildFinvizFilters(){
   };
 
   // Build Finviz URL filter string
+  // FIXES:
+  // 1. exch_nasd+exch_nyse can't be combined — removed, Finviz defaults to all US exchanges
+  // 2. ta_beta_o / ta_beta_u — not supported as URL params, removed (shown in UI only)
+  // 3. ta_perf_w_o-10 — Finviz doesn't support negative perf thresholds via URL, removed
+  // 4. RSI range — Finviz only supports over OR under, not both; use over (rsiMin) as lower bound
+  // 5. v=211 = Technical view (shows Rel Vol column), better than v=111 (Overview)
   const fParts = [
-    'exch_nasd', 'exch_nyse',
     'geo_usa',
     'cap_midlarge',
     'sh_price_o5',
     'sh_avgvol_o500',
     `ta_rsi_o${mode.rsiMin}`,
     `ta_rsi_u${mode.rsiMax}`,
-    `ta_beta_o${mode.betaMin}`,
-    `ta_beta_u${mode.betaMax}`,
     `ta_relvol_o${mode.minVol}`,
     'ta_sma20_pa',
     'ta_sma50_pa',
     `fa_pe_u${rf.pe}`,
     `fa_debteq_u${rf.de}`,
     'fa_epsyoy1_o0',
-    'ta_perf_w_o-10',
   ];
 
   // Add sector filter if specific sector selected
@@ -711,7 +714,8 @@ function buildFinvizFilters(){
   }
 
   const filterStr = fParts.join(',');
-  const url = `https://finviz.com/screener.ashx?v=111&f=${filterStr}&o=-relativevolume&ar=180`;
+  // v=211 = Technical view so Relative Volume column is visible by default
+  const url = `https://finviz.com/screener.ashx?v=211&f=${filterStr}&o=-relativevolume`;
 
   return { filters, url, regime: rf.label, mode: mode.label };
 }
