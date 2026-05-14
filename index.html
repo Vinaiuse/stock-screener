@@ -11,6 +11,7 @@
   --bg:#080A09;--bg2:#101411;--bg3:#171C18;--bg4:#1F251F;
   --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.11);
   --text:#DFE8DF;--muted:#7A8C7A;--dim:#3D4D3D;
+  --fg:#DFE8DF;--card:#101411;--border:rgba(255,255,255,.09);
   --green:#56E39F;--gdim:#0E2B1C;--gtxt:#82F4BC;
   --red:#F2645A;--rdim:#2B0E0E;--rtxt:#F4A09A;
   --blue:#5AB4F2;--bdim:#0E1E2B;--btxt:#9ACFF4;
@@ -104,7 +105,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .key-row input::placeholder{color:var(--dim)}
 .btn-save{background:var(--bg4);border:1px solid var(--line2);color:var(--text);border-radius:5px;padding:7px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;white-space:nowrap}
 .btn-save:hover{background:var(--bg3)}
-.ks{font-size:11px}.ks.ok{color:var(--green)}.ks.err{color:var(--red)}
+.ks{font-size:11px}.ks.ok{color:var(--green)}.ks.err{color:var(--red)}.ks.persistent{opacity:1;font-weight:600}
 .model-row{display:flex;gap:6px;flex-wrap:wrap}
 .model-btn{background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
 .model-btn.active{background:var(--gdim);border-color:rgba(86,227,159,.3);color:var(--green)}
@@ -858,19 +859,49 @@ const SECTOR_DIST={
 let selectedModel='openai/gpt-4o';
 function pickModel(btn){document.querySelectorAll('.model-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');selectedModel=btn.dataset.model;localStorage.setItem('ss_model4',selectedModel);}
 const KK='ss_gh_key4',PK='ss_prefs4',WK='ss_watch4',JK='ss_journal4';
-function saveKey(){const v=document.getElementById('api-key').value.trim();if(!v.startsWith('ghp_')&&!v.startsWith('github_pat_')&&!v.startsWith('gho_')){showKSt('Must start with ghp_ or github_pat_','err');return;}localStorage.setItem(KK,v);showKSt('Saved ✓','ok');}
-function showKSt(msg,type){const el=document.getElementById('key-st');el.textContent=msg;el.className='ks '+type;setTimeout(()=>{el.textContent='';el.className='ks';},3500);}
+function saveKey(){
+  const v=document.getElementById('api-key').value.trim();
+  if(!v.startsWith('ghp_')&&!v.startsWith('github_pat_')&&!v.startsWith('gho_')){
+    showKSt('Must start with ghp_ or github_pat_ or gho_','err');return;
+  }
+  localStorage.setItem(KK,v);
+  showKSt('Saved ✓ — token stored in browser','ok',true);
+}
+function showKSt(msg,type,persist=false){
+  const el=document.getElementById('key-st');
+  el.textContent=msg;el.className='ks '+type+(persist?' persistent':'');
+  if(!persist)setTimeout(()=>{
+    // Only clear if not a persistent message
+    if(!el.classList.contains('persistent')){el.textContent='';el.className='ks';}
+  },3500);
+}
 function getKey(){return localStorage.getItem(KK)||document.getElementById('api-key').value.trim();}
 function savePrefs(){localStorage.setItem(PK,JSON.stringify({regime:document.getElementById('regime').value,sector:document.getElementById('sector').value,holding:document.getElementById('holding').value}));}
 window.onload=()=>{
   const k=localStorage.getItem(KK);
-  if(k){document.getElementById('api-key').value=k;showKSt('Token loaded ✓','ok');}
+  if(k){
+    document.getElementById('api-key').value=k;
+    // Persistent indicator — doesn't auto-clear so user always knows token is saved
+    const kEl=document.getElementById('key-st');
+    if(kEl){kEl.textContent='Token saved ✓';kEl.className='ks ok persistent';}
+  }
   const pr=JSON.parse(localStorage.getItem(PK)||'{}');
   if(pr.regime)document.getElementById('regime').value=pr.regime;
   if(pr.sector)document.getElementById('sector').value=pr.sector;
   if(pr.holding)document.getElementById('holding').value=pr.holding;
   const sm=localStorage.getItem('ss_model4');
-  if(sm){selectedModel=sm;document.querySelectorAll('.model-btn').forEach(b=>b.classList.toggle('active',b.dataset.model===sm));}
+  if(sm){
+    selectedModel=sm;
+    document.querySelectorAll('.model-btn').forEach(b=>b.classList.toggle('active',b.dataset.model===sm));
+    // Show which model was restored
+    const activeBtn=document.querySelector('.model-btn.active');
+    if(activeBtn){
+      const orig=activeBtn.textContent;
+      // Brief pulse to show it was restored — doesn't change text, just highlights
+      activeBtn.style.boxShadow='0 0 0 2px var(--green)';
+      setTimeout(()=>{activeBtn.style.boxShadow='';},1500);
+    }
+  }
   updateModeInfo();renderFinvizPanel();renderWatch();renderTracker();
   // Load market context with one auto-retry after 4s if ETFs fail
   loadMarketContext().then(()=>{
@@ -1122,6 +1153,7 @@ function addWatch(){
 function removeWatch(i){const l=getWatch();l.splice(i,1);saveWatch(l);renderWatch();}
 function clearWatch(){saveWatch([]);renderWatch();}
 document.getElementById('wl-input').addEventListener('keydown',e=>{if(e.key==='Enter')addWatch();});
+document.getElementById('api-key').addEventListener('keydown',e=>{if(e.key==='Enter')saveKey();});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // JOURNAL / WIN TRACKER
