@@ -792,7 +792,7 @@ const MODES={
   position:{
     label:'Position',duration:'2–4 weeks',
     rsiMin:38,rsiMax:65,atrMin:2.5,atrMax:8,betaMin:0.7,betaMax:1.6,
-    stopMult:2.0,t1Mult:1.5,t2Mult:2.5,t3Mult:4.0,
+    stopMult:2.0,t1Mult:2.5,t2Mult:3.5,t3Mult:5.0,
     volWindow:5,minVol:1.1,earningsWarnDays:28,earningsAvoidDays:7,
     mktcap:'$3B–$20B',histDays:65,
     entryRule:'Pullback to 20d or 50d SMA, trend intact',exitRule:'Staged: T1 wk1, T2 wk2, T3 wk4',
@@ -1375,14 +1375,14 @@ async function fetchVIX(){
     // Source 1: ^VIX via Yahoo chart API (most reliable)
     async()=>{
       const end=Math.floor(Date.now()/1000);
-      const start=end-(5*24*60*60);
+      const start=end-(12*24*60*60); // 12 calendar days = ~8 trading days, guarantees 5 sessions
       const url=`https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&period1=${start}&period2=${end}`;
       const res=await proxyFetch(url);
       if(!res.ok)throw new Error(`Yahoo chart HTTP ${res.status}`);
       const data=await res.json();
       const result=data?.chart?.result?.[0];
       const price=result?.meta?.regularMarketPrice;
-      if(!price||price<5||price>90)throw new Error(`VIX out of range: ${price}`);
+      if(!price||price<5||price>80)throw new Error(`VIX out of range: ${price}`);
       const closes=result?.indicators?.quote?.[0]?.close?.filter(v=>v!=null)??[];
       const prevClose=closes.length>=2?closes[closes.length-2]:null;
       // 5-day direction: compare today vs 5 sessions ago
@@ -1397,7 +1397,7 @@ async function fetchVIX(){
       if(!res.ok)throw new Error(`Yahoo quote HTTP ${res.status}`);
       const data=await res.json();
       const price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if(!price||price<5||price>90)throw new Error(`VIX out of range: ${price}`);
+      if(!price||price<5||price>80)throw new Error(`VIX out of range: ${price}`);
       return{price,change_pct:0,change5d:null,source:'Yahoo quote'};
     },
     // Source 3: VIX via VIXY ETF as proxy (ProShares VIX Short-Term Futures)
@@ -1737,6 +1737,21 @@ async function runScan(){
   const mode=MODES[holding];
   const sector=document.getElementById('sector').value;
   const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  // Pre-calculate forward date ranges so AI doesn't get them wrong
+  const d=new Date();
+  const fmtD=dt=>dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const day2=fmtD(new Date(d.getTime()+2*864e5));
+  const day5=fmtD(new Date(d.getTime()+5*864e5));
+  const day7=fmtD(new Date(d.getTime()+7*864e5));
+  const day14=fmtD(new Date(d.getTime()+14*864e5));
+  const day21=fmtD(new Date(d.getTime()+21*864e5));
+  const day28=fmtD(new Date(d.getTime()+28*864e5));
+  const exitDateHints={
+    intraday:`same day (${today})`,
+    swing:`${day2} – ${day5}`,
+    short:`${day5} – ${day14}`,
+    position:`${day7} – ${day28} (staged: T1 ~${day7}, T2 ~${day14}, T3 ~${day28})`
+  };
   const watch=getWatch();
 
   // Green sectors for today
@@ -1762,10 +1777,10 @@ async function runScan(){
     :'';
 
   const exitInstr={
-    intraday:'entry_time: between 9:45-10:30 AM EST. exit_time: between 3:00-3:45 PM EST SAME DAY. NEVER use date ranges for intraday.',
-    swing:'entry_time: "At open" or pullback time. exit_time: MUST be a date range like "May 8-10" or "Day 3-5". NEVER use same-day times.',
-    short:'entry_time: "Breakout confirmation" or specific time. exit_time: MUST be a date range like "May 12-19" or "Week 2". NEVER use same-day times.',
-    position:'entry_time: "Pullback to 20d SMA" or specific time. exit_time: MUST be a date range like "May 19 – Jun 4" or "Weeks 2-4". NEVER use same-day times.'
+    intraday:`entry_time: between 9:45-10:30 AM EST. exit_time: "3:00-3:45 PM EST" — SAME DAY ONLY (${today}). NEVER use future dates for intraday.`,
+    swing:`entry_time: "At open" or pullback time. exit_time: MUST be "${exitDateHints.swing}" or similar FUTURE date range. Today is ${today} — never use past dates.`,
+    short:`entry_time: "Breakout confirmation" or specific time. exit_time: MUST be "${exitDateHints.short}" or similar FUTURE date range. Today is ${today} — never use past dates.`,
+    position:`entry_time: "Pullback to 20d SMA" or specific time. exit_time: MUST be "${exitDateHints.position}" — staged exits over 4 weeks from today (${today}). Never use past dates.`
   };
 
   // Step 2 — AI proposes 15 candidates from the full NYSE/NASDAQ universe
@@ -1872,6 +1887,23 @@ Each object must have exactly these fields:
         console.log('Watchlist injection: added',missing.join(', '),'to candidate pool');
       }
     }
+
+    // Validate exit dates — ensure they're not in the past
+    const nowMs=Date.now();
+    aiStocks=aiStocks.map(s=>{
+      if(!s.exit_time)return s;
+      // Check if exit_time contains a past month/date combination
+      const currentYear=new Date().getFullYear();
+      // Try to parse — if it looks like a past date, replace with mode default
+      try{
+        const testDate=new Date(s.exit_time.split('–')[0].trim()+' '+currentYear);
+        if(!isNaN(testDate.getTime())&&testDate.getTime()<nowMs-86400000){
+          console.warn(`[ExitDate] Past exit date detected for ${s.ticker}: "${s.exit_time}" — replacing with mode default`);
+          return{...s,exit_time:exitDateHints[holding]};
+        }
+      }catch(e2){}
+      return s;
+    });
 
     stepDone('ls2','ls3');
   }catch(e){
