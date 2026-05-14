@@ -49,6 +49,51 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .rdiv{width:1px;background:var(--line2);align-self:stretch}
 .regime-auto{font-size:10px;color:var(--amber);background:var(--adim);border:1px solid rgba(242,194,90,.2);border-radius:20px;padding:2px 8px;white-space:nowrap}
 
+/* ── Market Intelligence Panel ─────────────────────────────────── */
+.mip-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+.mip-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.mip-title{font-size:13px;font-weight:700;color:var(--fg);letter-spacing:.04em}
+.mip-sub{font-size:10px;color:var(--dim)}
+.mip-summary{display:flex;align-items:stretch;gap:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.mip-vix-block{padding:12px 16px;min-width:130px;display:flex;flex-direction:column;gap:3px}
+.mip-vix-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.mip-vix-arrow{font-size:26px;line-height:1;font-weight:900}
+.mip-vix-desc{font-size:11px;color:var(--muted)}
+.mip-divider{width:1px;background:var(--border);flex-shrink:0}
+.mip-condition{padding:12px 16px;flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.mip-cond-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.mip-cond-text{font-size:13px;font-weight:600;color:var(--fg);line-height:1.4}
+.mip-cond-action{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.mip-sectors-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.mip-sectors{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.mip-etf{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;min-width:64px;transition:border-color .2s,background .2s}
+.mip-etf.up{background:var(--gdim);border-color:rgba(86,227,159,.3)}
+.mip-etf.dn{background:var(--rdim);border-color:rgba(242,100,90,.3)}
+.mip-etf.flat{background:var(--adim);border-color:rgba(242,194,90,.2)}
+.me-t{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.04em}
+.me-v{font-size:12px;font-weight:700;color:var(--muted)}
+.mip-etf.up .me-v{color:var(--gtxt)}.mip-etf.dn .me-v{color:var(--rtxt)}.mip-etf.flat .me-v{color:var(--atxt)}
+.mip-guide{margin-bottom:14px}
+.mip-guide-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.mip-guide-rows{display:flex;flex-direction:column;gap:4px}
+.mip-gr{display:flex;align-items:flex-start;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px}
+.mip-gr.active-row{border-color:rgba(86,227,159,.4);background:var(--gdim)}
+.mip-gr.warn-row{border-color:rgba(242,194,90,.3);background:var(--adim)}
+.mip-gr.danger-row{border-color:rgba(242,100,90,.3);background:var(--rdim)}
+.mgr-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.mgr-body{flex:1}
+.mgr-cond{font-size:11px;font-weight:700;color:var(--fg);margin-bottom:2px}
+.mgr-action{font-size:11px;color:var(--muted);line-height:1.5}
+.mgr-badge{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:6px;vertical-align:middle}
+.mgr-badge.g{background:rgba(86,227,159,.2);color:var(--gtxt)}.mgr-badge.a{background:rgba(242,194,90,.15);color:var(--atxt)}.mgr-badge.r{background:rgba(242,100,90,.15);color:var(--rtxt)}
+.mip-checklist-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.mip-checklist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.mip-check{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)}
+.mip-check input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.mip-check span{line-height:1.4}
+.mip-check:has(input:checked) span{color:var(--fg)}
+.mip-check-warn{font-size:11px;color:var(--amber);font-weight:600;min-height:16px;margin-top:2px}
+
 /* Setup */
 .setup-card{background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem}
 .setup-title{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--green);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase}
@@ -340,6 +385,59 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
   <span class="regime-auto" id="regime-auto-tag">Loading…</span>
 </div>
 
+<!-- Market Intelligence Panel -->
+<div class="mip-card" id="mip-card">
+  <div class="mip-header">
+    <span class="mip-title">📡 Market Intelligence</span>
+    <span class="mip-sub" id="mip-updated">Loading market data…</span>
+  </div>
+
+  <!-- Row 1: VIX direction + market condition summary -->
+  <div class="mip-summary" id="mip-summary">
+    <div class="mip-vix-block">
+      <div class="mip-vix-label">VIX 5-day trend</div>
+      <div class="mip-vix-arrow" id="mip-vix-arrow">—</div>
+      <div class="mip-vix-desc" id="mip-vix-desc">Loading…</div>
+    </div>
+    <div class="mip-divider"></div>
+    <div class="mip-condition" id="mip-condition">
+      <div class="mip-cond-label">Today's market condition</div>
+      <div class="mip-cond-text" id="mip-cond-text">Fetching data…</div>
+      <div class="mip-cond-action" id="mip-cond-action"></div>
+    </div>
+  </div>
+
+  <!-- Row 2: Sector heatmap -->
+  <div class="mip-sectors-label">Sector tailwinds today</div>
+  <div class="mip-sectors" id="mip-sectors">
+    <div class="mip-etf" id="me-SPY"><span class="me-t">SPY</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-QQQ"><span class="me-t">QQQ</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-XLK"><span class="me-t">XLK Tech</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-XLF"><span class="me-t">XLF Finance</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-XLE"><span class="me-t">XLE Energy</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-XLI"><span class="me-t">XLI Industrial</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-XLV"><span class="me-t">XLV Health</span><span class="me-v">—</span></div>
+    <div class="mip-etf" id="me-XLU"><span class="me-t">XLU Utilities</span><span class="me-v">—</span></div>
+  </div>
+
+  <!-- Row 3: Decision guide table -->
+  <div class="mip-guide" id="mip-guide">
+    <div class="mip-guide-label">📋 Today's decision guide</div>
+    <div class="mip-guide-rows" id="mip-guide-rows"></div>
+  </div>
+
+  <!-- Row 4: Pre-scan checklist -->
+  <div class="mip-checklist-label">✅ Pre-scan checklist — tick before running</div>
+  <div class="mip-checklist" id="mip-checklist">
+    <label class="mip-check"><input type="checkbox" id="chk1"/><span>VIX direction matches my regime choice</span></label>
+    <label class="mip-check"><input type="checkbox" id="chk2"/><span>SPY and QQQ confirm market direction</span></label>
+    <label class="mip-check"><input type="checkbox" id="chk3"/><span>At least 2 sector ETFs are green today</span></label>
+    <label class="mip-check"><input type="checkbox" id="chk4"/><span>No major macro event today (Fed, CPI, NFP)</span></label>
+    <label class="mip-check"><input type="checkbox" id="chk5"/><span>I will check the chart before trading any card</span></label>
+  </div>
+  <div class="mip-check-warn" id="mip-check-warn"></div>
+</div>
+
 <!-- Setup -->
 <div class="setup-card">
   <div class="setup-title">⬡ GitHub Models — One Time Setup</div>
@@ -449,6 +547,200 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════════════════
+// MARKET INTELLIGENCE PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderMIP(){
+  const vix=MC.vix;
+  const vixDir=MC.vixDirection; // 'rising'|'falling'|'flat'|null
+  const vixChange5d=MC.vixChange5d; // numeric % change over 5 days
+  const spy=MC.etfs['SPY'];
+  const qqq=MC.etfs['QQQ'];
+
+  // ── VIX direction arrow + description ──────────────────────────
+  const arrowEl=document.getElementById('mip-vix-arrow');
+  const descEl=document.getElementById('mip-vix-desc');
+  if(arrowEl&&descEl){
+    if(vix===null){
+      arrowEl.textContent='—';arrowEl.style.color='var(--dim)';
+      descEl.textContent='VIX unavailable';
+    } else if(vixDir==='rising'){
+      arrowEl.textContent='↑';arrowEl.style.color='var(--red)';
+      descEl.textContent=`+${Math.abs(vixChange5d).toFixed(1)}% over 5 days — fear building`;
+    } else if(vixDir==='falling'){
+      arrowEl.textContent='↓';arrowEl.style.color='var(--green)';
+      descEl.textContent=`−${Math.abs(vixChange5d).toFixed(1)}% over 5 days — fear easing`;
+    } else {
+      arrowEl.textContent='→';arrowEl.style.color='var(--amber)';
+      descEl.textContent='VIX flat — no clear direction';
+    }
+  }
+
+  // ── Sector heatmap tiles ────────────────────────────────────────
+  const etfMap={'SPY':'SPY','QQQ':'QQQ','XLK':'XLK','XLF':'XLF','XLE':'XLE','XLI':'XLI','XLV':'XLV','XLU':'XLU'};
+  Object.entries(etfMap).forEach(([key,ticker])=>{
+    const el=document.getElementById('me-'+key);
+    if(!el)return;
+    const ch=ticker==='SPY'?spy:ticker==='QQQ'?qqq:MC.etfs[ticker];
+    const vEl=el.querySelector('.me-v');
+    if(ch==null){
+      el.className='mip-etf';if(vEl)vEl.textContent='—';return;
+    }
+    const chStr=(ch>=0?'+':'')+ch.toFixed(2)+'%';
+    if(vEl)vEl.textContent=chStr;
+    el.className='mip-etf '+(ch>0.3?'up':ch<-0.3?'dn':'flat');
+  });
+
+  // ── Condition summary ───────────────────────────────────────────
+  const condTextEl=document.getElementById('mip-cond-text');
+  const condActionEl=document.getElementById('mip-cond-action');
+  if(condTextEl&&condActionEl&&vix!==null&&spy!=null&&qqq!=null){
+    const spyUp=spy>0.3,spyDn=spy<-0.3;
+    const qqqUp=qqq>0.3,qqqDn=qqq<-0.3;
+    const vixLow=vix!==null&&vix<18,vixHigh=vix!==null&&vix>28;
+    const vixFalling=vixDir==='falling',vixRising=vixDir==='rising';
+
+    let cond='',action='';
+    if(vixLow&&vixFalling&&spyUp&&qqqUp){
+      cond='🟢 Strong bull — all signals aligned';
+      action='Trust Auto regime. Run scan normally. Full position sizing acceptable.';
+    } else if(vixLow&&spyUp){
+      cond='🟢 Bull market, calm conditions';
+      action='Auto regime reliable. Momentum plays favoured. Standard position size.';
+    } else if(vixLow&&vixRising&&spyDn){
+      cond='🟡 Calm ending — watch for shift';
+      action='Consider switching to Manual → Med rate. Reduce position size 25%.';
+    } else if(!vixLow&&!vixHigh&&vixFalling&&spyUp){
+      cond='🟢 Recovery underway — VIX retreating';
+      action='Override regime manually → Low vol. Momentum stocks starting to work again.';
+    } else if(!vixLow&&!vixHigh&&spyUp&&qqqUp){
+      cond='🟡 Cautious bull — mixed signals';
+      action='Auto regime fine. Be selective. Stick to Tier 1 cards only. Size down 25%.';
+    } else if(!vixLow&&!vixHigh&&vixRising){
+      cond='🟡 Deteriorating — VIX rising in grey zone';
+      action='Switch Manual → High vol high rate. Defensive sectors. Tight stops.';
+    } else if(vixHigh&&vixFalling&&spyUp){
+      cond='🟡 Panic peak likely behind us';
+      action='Override → Med rate manually. Early recovery — small size, confirm with chart.';
+    } else if(vixHigh&&spyDn&&qqqDn){
+      cond='🔴 Bear conditions — high fear';
+      action='High vol high rate regime. Very selective. Only Tier 1. Consider sitting out.';
+    } else if(vixHigh&&vixRising){
+      cond='🔴 Escalating fear — dangerous environment';
+      action='Do not trade momentum. Defensive only or sit out entirely.';
+    } else if(spyDn&&qqqDn){
+      cond='🟡 Market selling off today';
+      action='Check if broad selloff or sector-specific. Only green sector ETFs are valid.';
+    } else if(spyUp&&qqqDn){
+      cond='🟡 Tech lagging — sector rotation day';
+      action='Avoid XLK. Favour XLF, XLE, XLI, XLV setups today.';
+    } else if(spyDn&&qqqUp){
+      cond='🟡 Tech leading, broad market weak';
+      action='Tech-specific setups only. Avoid broad market plays.';
+    } else {
+      cond='🟡 Neutral conditions';
+      action='Standard approach. Check sector ETFs before running scan.';
+    }
+    condTextEl.textContent=cond;
+    condActionEl.textContent='→ '+action;
+  } else if(condTextEl){
+    condTextEl.textContent='Loading market data…';
+    if(condActionEl)condActionEl.textContent='';
+  }
+
+  // ── Decision guide rows ─────────────────────────────────────────
+  const guideEl=document.getElementById('mip-guide-rows');
+  if(guideEl){
+    // Only count the 6 sector ETFs shown in the heatmap — exclude SPY, QQQ, VIX, XLY, XLB
+    const HEATMAP_ETFS=['XLK','XLF','XLE','XLI','XLV','XLU'];
+    const greenSectorCount=HEATMAP_ETFS.filter(k=>MC.etfs[k]!=null&&MC.etfs[k]>0.3).length;
+
+    const rows=[
+      {
+        cls: vixLow&&vixDir==='falling'?'active-row':vixLow?'active-row':'',
+        icon:'🟢',
+        cond:`VIX ${vix!=null?vix.toFixed(1):'—'} ${vixDir==='falling'?'↓ falling':vixDir==='rising'?'↑ rising':vixDir==='flat'?'→ flat':'direction unknown'} · SPY ${spy!=null?(spy>=0?'+':'')+spy.toFixed(2)+'%':'—'}`,
+        action: vixLow&&vixDir!=='rising'&&spy!=null&&spy>0
+          ?'<span class="mgr-badge g">GO</span> Full scan, standard sizing, trust momentum signals'
+          : vixLow&&vixDir==='rising'
+          ?'<span class="mgr-badge a">CAUTION</span> Calm ending — size down, watch VIX closely'
+          :'Conditions not in low-vol territory'
+      },
+      {
+        cls: vix!=null&&vix>=18&&vix<28?'warn-row':'',
+        icon:'🟡',
+        cond:`Grey zone check · VIX 18–28 · Direction matters more than level`,
+        action: vixDir==='falling'&&spy!=null&&spy>0
+          ?'<span class="mgr-badge g">OVERRIDE</span> VIX falling + SPY green → set regime manually to Low vol'
+          : vixDir==='rising'
+          ?'<span class="mgr-badge r">OVERRIDE</span> VIX rising → set regime manually to High vol high rate'
+          :'<span class="mgr-badge a">NEUTRAL</span> Hold current regime, reduce position size 25%'
+      },
+      {
+        cls: vixHigh?'danger-row':'',
+        icon:'🔴',
+        cond:`High fear check · VIX ${vix!=null?vix.toFixed(1):'—'} ${vix!=null&&vix>=28?'— elevated':''}`,
+        action: vixHigh&&vixDir==='falling'
+          ?'<span class="mgr-badge a">RECOVERY</span> VIX retreating from highs — cautious re-entry, small size'
+          : vixHigh
+          ?'<span class="mgr-badge r">DEFENSIVE</span> Avoid momentum, only FCF-positive defensive names'
+          :'VIX below 28 — not applicable'
+      },
+      {
+        cls: greenSectorCount>=3?'active-row':greenSectorCount>=1?'warn-row':'danger-row',
+        icon:'📊',
+        cond:`Sector tailwinds: ${greenSectorCount} of ${HEATMAP_ETFS.length} sector ETFs green today`,
+        action: greenSectorCount>=4
+          ?'<span class="mgr-badge g">STRONG</span> Broad sector participation — momentum setups reliable'
+          : greenSectorCount>=2
+          ?'<span class="mgr-badge a">SELECTIVE</span> 2–3 sectors green — only trade cards in green sectors'
+          : greenSectorCount===1
+          ?'<span class="mgr-badge r">NARROW</span> Only 1 sector working — very selective, small size'
+          :'<span class="mgr-badge r">AVOID</span> No green sectors — consider sitting out today'
+      },
+      {
+        cls:'',
+        icon:'📋',
+        cond:'Chart check reminder — required before any trade',
+        action:'Price above 20d SMA · Today's candle green · Not parabolic · Volume is buying not selling'
+      }
+    ];
+
+    guideEl.innerHTML=rows.map(r=>`
+      <div class="mip-gr ${r.cls}">
+        <div class="mgr-icon">${r.icon}</div>
+        <div class="mgr-body">
+          <div class="mgr-cond">${r.cond}</div>
+          <div class="mgr-action">${r.action}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Updated timestamp ───────────────────────────────────────────
+  const updEl=document.getElementById('mip-updated');
+  if(updEl)updEl.textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+}
+
+// ── Checklist warning watcher ───────────────────────────────────────────────
+function watchChecklist(){
+  const boxes=['chk1','chk2','chk3','chk4','chk5'];
+  const checked=boxes.filter(id=>{const el=document.getElementById(id);return el&&el.checked;}).length;
+  const warn=document.getElementById('mip-check-warn');
+  if(!warn)return;
+  if(checked===5){warn.textContent='✅ All checks passed — ready to scan';warn.style.color='var(--green)';}
+  else if(checked>=3){warn.textContent=`${5-checked} check${5-checked>1?'s':''} remaining — review before scanning`;warn.style.color='var(--amber)';}
+  else{warn.textContent=`${5-checked} checks remaining — complete checklist for informed trading`;warn.style.color='var(--amber)';}
+}
+// Wire checklist live
+setTimeout(()=>{
+  ['chk1','chk2','chk3','chk4','chk5'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('change',watchChecklist);
+  });
+  watchChecklist();
+},500);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CLOCK
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1013,7 +1305,7 @@ async function fetchEarningsDate(ticker){
 // ═══════════════════════════════════════════════════════════════════════════
 // MARKET CONTEXT — VIX + sector ETFs
 // ═══════════════════════════════════════════════════════════════════════════
-let MC={vix:null,etfs:{},detectedRegime:'highvol_medrate'};
+let MC={vix:null,vixDirection:null,vixChange5d:null,etfs:{},detectedRegime:'highvol_medrate'};
 const ETF_IDS=['SPY','QQQ','%5EVIX','XLK','XLF','XLE','XLI','XLV','XLU','XLY','XLB'];
 const ETF_EL_MAP={'SPY':'rb-spy','QQQ':'rb-qqq','%5EVIX':'rb-vix','XLK':'rb-xlk','XLF':'rb-xlf','XLE':'rb-xle','XLI':'rb-xli','XLV':'rb-xlv','XLU':'rb-xlu'};
 
@@ -1037,7 +1329,10 @@ async function fetchVIX(){
       if(!price||price<5||price>90)throw new Error(`VIX out of range: ${price}`);
       const closes=result?.indicators?.quote?.[0]?.close?.filter(v=>v!=null)??[];
       const prevClose=closes.length>=2?closes[closes.length-2]:null;
-      return{price,change_pct:prevClose?((price-prevClose)/prevClose*100):0,source:'Yahoo chart'};
+      // 5-day direction: compare today vs 5 sessions ago
+      const close5dAgo=closes.length>=6?closes[closes.length-6]:closes[0];
+      const change5d=close5dAgo?((price-close5dAgo)/close5dAgo*100):0;
+      return{price,change_pct:prevClose?((price-prevClose)/prevClose*100):0,change5d,source:'Yahoo chart'};
     },
     // Source 2: ^VIX via Yahoo quote API (different endpoint)
     async()=>{
@@ -1047,7 +1342,7 @@ async function fetchVIX(){
       const data=await res.json();
       const price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
       if(!price||price<5||price>90)throw new Error(`VIX out of range: ${price}`);
-      return{price,change_pct:0,source:'Yahoo quote'};
+      return{price,change_pct:0,change5d:null,source:'Yahoo quote'};
     },
     // Source 3: VIX via VIXY ETF as proxy (ProShares VIX Short-Term Futures)
     // VIXY moves with VIX directionally — not the VIX level but confirms regime
@@ -1152,9 +1447,20 @@ async function loadMarketContext(){
       tag.style.color='';tag.style.fontWeight='';
       tag.textContent=`Auto from VIX ${vix.toFixed(1)} · Source ${vixResult.sourceIndex}`;
     }
+    // Store 5-day direction
+    const c5=vixResult.change5d;
+    if(c5!=null){
+      MC.vixChange5d=Number(c5.toFixed(2));
+      MC.vixDirection=Math.abs(c5)<3?'flat':c5>0?'rising':'falling';
+    } else {
+      // Source 2/3 used — no 5d data available, direction unknown
+      MC.vixChange5d=null;
+      MC.vixDirection=null;
+    }
   }
 
   renderFinvizPanel();
+  renderMIP();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1315,6 +1621,14 @@ function setStatus(m){document.getElementById('status-bar').textContent=m;}
 function clearGrid(){document.getElementById('grid').innerHTML='<div class="empty">Cleared. Run a new scan when ready.</div>';setStatus('');}
 
 async function runScan(){
+  // Soft checklist warning — doesn't block scan but reminds the user
+  const boxes=['chk1','chk2','chk3','chk4','chk5'];
+  const unchecked=boxes.filter(id=>{const el=document.getElementById(id);return el&&!el.checked;}).length;
+  if(unchecked>0){
+    const warn=document.getElementById('mip-check-warn');
+    if(warn){warn.textContent=`⚠ ${unchecked} pre-scan check${unchecked>1?'s':''} not ticked — proceeding anyway`;warn.style.color='var(--amber)';}
+  }
+
   const key=getKey();
   if(!key||(!key.startsWith('ghp_')&&!key.startsWith('github_pat_')&&!key.startsWith('gho_'))){alert('Please enter a valid GitHub token first.');return;}
   savePrefs();
