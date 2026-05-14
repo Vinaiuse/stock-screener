@@ -1254,7 +1254,31 @@ function calcVolSurge(volumes,windowDays=1){
 // ═══════════════════════════════════════════════════════════════════════════
 // YAHOO FINANCE FETCH
 // ═══════════════════════════════════════════════════════════════════════════
-const CORS='https://corsproxy.io/?';
+// CORS proxy pool — tried in order, falls back if one is slow/down
+const CORS_PROXIES=[
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://cors-anywhere.herokuapp.com/',
+];
+let activeProxyIdx=0;
+const CORS=CORS_PROXIES[0]; // legacy alias for existing code
+
+// Smart fetch — tries proxies in order, remembers which one works
+async function proxyFetch(targetUrl,opts={}){
+  const signal=opts.signal||AbortSignal.timeout(8000);
+  // Start with last known working proxy
+  const order=[activeProxyIdx,...CORS_PROXIES.map((_,i)=>i).filter(i=>i!==activeProxyIdx)];
+  for(const idx of order){
+    try{
+      const proxyUrl=CORS_PROXIES[idx]+encodeURIComponent(targetUrl);
+      const res=await fetch(proxyUrl,{...opts,signal:AbortSignal.timeout(8000)});
+      if(res.ok){activeProxyIdx=idx;return res;}
+    }catch(e){
+      console.warn(`[Proxy ${idx+1}] Failed for ${targetUrl.slice(0,60)}: ${e.message}`);
+    }
+  }
+  throw new Error('All CORS proxies failed');
+}
 async function fetchHistorical(ticker,days=60,minBars=15){
   try{
     const end=Math.floor(Date.now()/1000);
@@ -1316,8 +1340,8 @@ async function fetchEarningsDate(ticker){
   try{
     const cb=Date.now();
     // Try Yahoo Finance quote endpoint which more reliably has earnings dates
-    const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=earningsTimestamp,earningsTimestampStart,earningsTimestampEnd&_cb=${cb}`)}`;
-    const res=await fetch(url,{cache:'no-store',headers:{'Accept':'application/json','Cache-Control':'no-cache'}});
+    const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=earningsTimestamp,earningsTimestampStart,earningsTimestampEnd&_cb=${cb}`;
+    const res=await proxyFetch(url,{cache:'no-store',headers:{'Accept':'application/json','Cache-Control':'no-cache'}});
     if(!res.ok)return null;
     const data=await res.json();
     const q=data?.quoteResponse?.result?.[0];
@@ -1352,8 +1376,8 @@ async function fetchVIX(){
     async()=>{
       const end=Math.floor(Date.now()/1000);
       const start=end-(5*24*60*60);
-      const url=`${CORS}${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&period1='+start+'&period2='+end)}`;
-      const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+      const url=`https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&period1=${start}&period2=${end}`;
+      const res=await proxyFetch(url);
       if(!res.ok)throw new Error(`Yahoo chart HTTP ${res.status}`);
       const data=await res.json();
       const result=data?.chart?.result?.[0];
@@ -1368,8 +1392,8 @@ async function fetchVIX(){
     },
     // Source 2: ^VIX via Yahoo quote API (different endpoint)
     async()=>{
-      const url=`${CORS}${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d')}`;
-      const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+      const url=`https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d`;
+      const res=await proxyFetch(url);
       if(!res.ok)throw new Error(`Yahoo quote HTTP ${res.status}`);
       const data=await res.json();
       const price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
@@ -1405,8 +1429,11 @@ async function fetchVIX(){
 async function loadMarketContext(){
   document.getElementById('regime-auto-tag').textContent='Fetching VIX & sector data…';
 
-  // Fetch VIX separately with dedicated multi-source logic
-  const vixResult=await fetchVIX();
+  // Fetch VIX + all ETFs in PARALLEL — cuts step 1 time by ~70%
+  const [vixResult, ...etfResultsRaw]=await Promise.all([
+    fetchVIX(),
+    ...ETF_IDS.filter(t=>t!=='%5EVIX').map(async t=>({ticker:t,data:await fetchHistorical(t,30,3)}))
+  ]);
   const vixEl=document.getElementById('rb-vix');
 
   if(vixResult.failed){
@@ -1435,11 +1462,8 @@ async function loadMarketContext(){
     }
   }
 
-  // Fetch sector ETFs (SPY, QQQ, sector ETFs — excludes VIX which is handled above)
-  // Request 30 days to guarantee enough trading days across weekends/holidays
-  // minBars=3 — market bar only needs price + prev close, not full indicator history
-  const etfIds=ETF_IDS.filter(t=>t!=='%5EVIX');
-  const etfResults=await Promise.all(etfIds.map(async t=>({ticker:t,data:await fetchHistorical(t,30,3)})));
+  // Process ETF results (fetched in parallel with VIX above)
+  const etfResults=etfResultsRaw;
   etfResults.forEach(r=>{
     if(!r.data){
       console.warn(`[ETF] Failed to fetch: ${r.ticker}`);
@@ -1621,8 +1645,8 @@ async function validateTickers(candidates){
       try{
         const end=Math.floor(Date.now()/1000);
         const start=end-(7*24*60*60);
-        const url=`${CORS}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.ticker}?interval=1d&period1=${start}&period2=${end}`)}`;
-        const res=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(6000)});
+        const url=`https://query1.finance.yahoo.com/v8/finance/chart/${s.ticker}?interval=1d&period1=${start}&period2=${end}`;
+        const res=await proxyFetch(url,{cache:'no-store'});
         if(!res.ok)return{s,ok:false,reason:`HTTP ${res.status}`};
         const data=await res.json();
         const result=data?.chart?.result?.[0];
@@ -1678,8 +1702,19 @@ async function runScan(){
   setStatus('');
   const stepDone=(id,next)=>{const el=document.getElementById(id);if(el)el.className='ld-step done';const nl=document.getElementById(next);if(nl)nl.className='ld-step active';};
 
-  // Step 1 — refresh market context (VIX + sector ETFs)
-  await loadMarketContext();
+  // Step 1 — refresh market context with hard 20s timeout
+  // If it hangs longer than that, something is wrong with the proxy
+  setStatus('Fetching market data…');
+  try{
+    await Promise.race([
+      loadMarketContext(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('Market context timeout after 20s')),20000))
+    ]);
+  }catch(e){
+    console.warn('[Step1] loadMarketContext failed or timed out:',e.message);
+    // Don't abort scan — continue with whatever data loaded, or no data
+    // VIX null check below will handle regime fallback
+  }
 
   // Block scan if VIX failed and user is still on Auto regime
   // Auto regime with no VIX = fabricated regime = unreliable scan
