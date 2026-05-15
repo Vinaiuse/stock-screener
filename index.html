@@ -769,7 +769,7 @@ const MODES={
     volWindow:1,minVol:1.5,earningsWarnDays:1,earningsAvoidDays:0,
     mktcap:'$3B–$30B',histDays:30,
     entryRule:'9:45–10:30 AM EST',exitRule:'3:00–3:45 PM EST same day',
-    scoreWeights:{rsi:20,atr:20,adx:15,vol:25,beta:0,sector:10,earnings:10}
+    scoreWeights:{rsi:15,atr:15,adx:12,vol:18,beta:0,sector:10,earnings:10}
   },
   swing:{
     label:'Swing',duration:'2–5 days',
@@ -778,7 +778,7 @@ const MODES={
     volWindow:3,minVol:1.3,earningsWarnDays:7,earningsAvoidDays:2,
     mktcap:'$3B–$25B',histDays:40,
     entryRule:'At open or pullback to support',exitRule:'Day 2–5 at resistance',
-    scoreWeights:{rsi:20,atr:18,adx:17,vol:22,beta:8,sector:8,earnings:7}
+    scoreWeights:{rsi:15,atr:13,adx:13,vol:17,beta:7,sector:8,earnings:7}
   },
   short:{
     label:'Short-term',duration:'1–2 weeks',
@@ -787,7 +787,7 @@ const MODES={
     volWindow:5,minVol:1.2,earningsWarnDays:14,earningsAvoidDays:5,
     mktcap:'$3B–$20B',histDays:50,
     entryRule:'Breakout confirmation or pullback to 20d SMA',exitRule:'Week 1–2 at target',
-    scoreWeights:{rsi:20,atr:15,adx:18,vol:20,beta:10,sector:10,earnings:7}
+    scoreWeights:{rsi:15,atr:12,adx:15,vol:15,beta:8,sector:8,earnings:7}
   },
   position:{
     label:'Position',duration:'2–4 weeks',
@@ -796,7 +796,7 @@ const MODES={
     volWindow:5,minVol:1.1,earningsWarnDays:28,earningsAvoidDays:7,
     mktcap:'$3B–$20B',histDays:65,
     entryRule:'Pullback to 20d or 50d SMA, trend intact',exitRule:'Staged: T1 wk1, T2 wk2, T3 wk4',
-    scoreWeights:{rsi:20,atr:12,adx:18,vol:18,beta:12,sector:10,earnings:10}
+    scoreWeights:{rsi:15,atr:10,adx:15,vol:13,beta:10,sector:9,earnings:8}
   }
 };
 
@@ -1593,13 +1593,35 @@ function scoreStock(s,mode){
   const earnLabel=earnUnknown?'Unknown':de<0?'Past':'In '+de+'d';
   score+=earnPts;breakdown.push({label:'Earnings',val:earnSafe?'Safe':earnLabel,pts:earnPts,max:W.earnings,hit:earnSafe,partial:earnCaution||earnUnknown});
 
-  // Trend alignment bonus (price above SMA20 and SMA50)
-  if(s.sma20!=null&&s.sma50!=null&&s.price>0){
-    if(s.price>s.sma20&&s.price>s.sma50)score+=5;
-    else if(s.price>s.sma20)score+=2;
+  // TODAY'S PRICE ACTION — was completely missing from scoring
+  // A stock down hard today is NOT a momentum setup regardless of historical indicators
+  const chg=s.change_pct;
+  let todayPts=0,todayLabel='—';
+  if(chg!=null){
+    if(chg>=1.5){todayPts=10;todayLabel='+'+chg.toFixed(2)+'%';}
+    else if(chg>=0.3){todayPts=7;todayLabel='+'+chg.toFixed(2)+'%';}
+    else if(chg>=-0.3){todayPts=3;todayLabel=chg.toFixed(2)+'%';}
+    else if(chg>=-1.5){todayPts=0;todayLabel=chg.toFixed(2)+'%';}
+    else{todayPts=-8;todayLabel=chg.toFixed(2)+'%';} // hard down = penalty
   }
+  score+=todayPts;
+  breakdown.push({label:'Today',val:todayLabel,pts:todayPts,max:10,
+    hit:chg!=null&&chg>=1.5,partial:chg!=null&&chg>=0.3&&chg<1.5});
 
-  return{score:Math.min(Math.round(score),100),breakdown};
+  // TREND — price vs SMA20/50 (was a silent +2/+5 bonus, now visible and penalises downtrends)
+  let trendPts=0,trendLabel='—';
+  if(s.sma20!=null&&s.price>0){
+    const abv20=s.price>s.sma20;
+    const abv50=s.sma50!=null&&s.price>s.sma50;
+    if(abv20&&abv50){trendPts=5;trendLabel='Above SMA20+50';}
+    else if(abv20){trendPts=3;trendLabel='Above SMA20';}
+    else{trendPts=-3;trendLabel='Below SMA20';}
+  }
+  score+=trendPts;
+  breakdown.push({label:'Trend',val:trendLabel,pts:trendPts,max:5,
+    hit:trendPts>=5,partial:trendPts>0&&trendPts<5});
+
+  return{score:Math.min(Math.max(Math.round(score),0),100),breakdown};
 }
 
 // Confidence tier from score
@@ -1983,7 +2005,11 @@ Each object must have exactly these fields:
   const scored=enriched.map(s=>{
     const {score,breakdown}=scoreStock(s,holding);
     const de=s.daysToEarnings;
+    const chgToday=s.change_pct;
     let signal=score>=75?'STRONG BUY':score>=55?'BUY':score>=35?'WATCH':'AVOID';
+    // Override: hard down today = AVOID regardless of historical score
+    if(chgToday!=null&&chgToday<=-2.0&&signal!=='AVOID')signal='WATCH'; // demote
+    if(chgToday!=null&&chgToday<=-3.5)signal='AVOID';                   // hard block
     if(de!=null&&de>=0&&de<=mode.earningsAvoidDays)signal='AVOID';
     const tier=getTier(score);
     return{...s,score,breakdown,signal,tier};
@@ -2020,8 +2046,12 @@ Each object must have exactly these fields:
   })));
 
   // Filter out AVOID and show top 5
-  const filtered=scoredCapped.filter(s=>s.signal!=='AVOID').slice(0,5);
-  const displayStocks=filtered.length>0?filtered:scoredCapped.slice(0,5);
+  // Re-rank: stocks down hard today go to the bottom regardless of historical score
+  const goodSetups=scoredCapped.filter(s=>s.change_pct==null||s.change_pct>-1.5);
+  const brokenSetups=scoredCapped.filter(s=>s.change_pct!=null&&s.change_pct<=-1.5);
+  const reranked=[...goodSetups,...brokenSetups];
+  const filtered=reranked.filter(s=>s.signal!=='AVOID').slice(0,5);
+  const displayStocks=filtered.length>0?filtered:reranked.slice(0,5);
 
   renderCards(displayStocks,holding,activeRegime,scoredCapped.length);
   const liveCount=displayStocks.filter(s=>s.live).length;
