@@ -66,6 +66,18 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .mip-cond-text{font-size:13px;font-weight:600;color:var(--fg);line-height:1.4}
 .mip-cond-action{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
 .mip-sectors-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.mip-rs-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;margin-top:6px}
+.mip-rs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.mip-rs-tile{display:flex;flex-direction:column;align-items:center;gap:1px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;min-width:64px}
+.mip-rs-tile.rot-up{background:var(--gdim);border-color:rgba(86,227,159,.3)}
+.mip-rs-tile.rot-dn{background:var(--rdim);border-color:rgba(242,100,90,.3)}
+.mip-rs-tile.rot-flat{background:var(--adim);border-color:rgba(242,194,90,.2)}
+.rs-t{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.04em}
+.rs-v{font-size:11px;font-weight:700;color:var(--muted);font-family:var(--mono)}
+.mip-rs-tile.rot-up .rs-v{color:var(--gtxt)}
+.mip-rs-tile.rot-dn .rs-v{color:var(--rtxt)}
+.mip-rs-tile.rot-flat .rs-v{color:var(--atxt)}
+.rs-arrow{font-size:14px;line-height:1;font-weight:900;margin-bottom:1px}
 .mip-sectors{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
 .mip-etf{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;min-width:64px;transition:border-color .2s,background .2s}
 .mip-etf.up{background:var(--gdim);border-color:rgba(86,227,159,.3)}
@@ -152,6 +164,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
 .sec-pill{font-size:10px;color:var(--dim);background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:2px 8px}
 .tier-pill{font-size:10px;font-weight:700;border-radius:20px;padding:2px 9px}
 .tier-1{background:var(--gdim);color:var(--gtxt);border:1px solid rgba(86,227,159,.25)}
+.gem-pill{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(90deg,rgba(180,140,242,.15),rgba(86,227,159,.15));border:1px solid rgba(180,140,242,.35);color:#c5a3f5;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.03em;cursor:help}
 .tier-2{background:var(--bdim);color:var(--btxt);border:1px solid rgba(90,180,242,.25)}
 .tier-3{background:var(--adim);color:var(--atxt);border:1px solid rgba(242,194,90,.25)}
 .tier-4{background:var(--bg4);color:var(--muted);border:1px solid var(--line2)}
@@ -421,6 +434,10 @@ body::before{content:'';position:fixed;inset:0;z-index:0;opacity:.04;pointer-eve
     <div class="mip-etf" id="me-XLU"><span class="me-t">XLU Utilities</span><span class="me-v">—</span></div>
   </div>
 
+  <!-- Row 2.5: 20-day Relative Strength rotation tracker -->
+  <div class="mip-rs-label">📈 Sector rotation — 20-day relative strength vs SPY</div>
+  <div class="mip-rs" id="mip-rs"></div>
+
   <!-- Row 3: Decision guide table -->
   <div class="mip-guide" id="mip-guide">
     <div class="mip-guide-label">📋 Today's decision guide</div>
@@ -576,6 +593,22 @@ function renderMIP(){
       arrowEl.textContent='→';arrowEl.style.color='var(--amber)';
       descEl.textContent='VIX flat — no clear direction';
     }
+  }
+
+  // ── 20-day Relative Strength tiles (rotation tracker) ───────────
+  const rsEl=document.getElementById('mip-rs');
+  if(rsEl){
+    const rsTickers=['XLK','XLF','XLE','XLI','XLV','XLU','XLY','XLB'];
+    const labels={XLK:'Tech',XLF:'Finance',XLE:'Energy',XLI:'Industrial',XLV:'Health',XLU:'Utilities',XLY:'Consumer',XLB:'Materials'};
+    rsEl.innerHTML=rsTickers.map(t=>{
+      const rs=MC.etfRS[t];
+      if(!rs){return `<div class="mip-rs-tile"><span class="rs-t">${labels[t]}</span><span class="rs-arrow">—</span><span class="rs-v">—</span></div>`;}
+      const v=rs.rs20d;
+      const cls=v>0.5?'rot-up':v<-0.5?'rot-dn':'rot-flat';
+      const arrow=v>0.5?'↑':v<-0.5?'↓':'→';
+      const sign=v>=0?'+':'';
+      return `<div class="mip-rs-tile ${cls}" title="${labels[t]}: ${sign}${v}% vs SPY over 20 days"><span class="rs-t">${labels[t]}</span><span class="rs-arrow">${arrow}</span><span class="rs-v">${sign}${v}</span></div>`;
+    }).join('');
   }
 
   // ── Sector heatmap tiles ────────────────────────────────────────
@@ -1361,7 +1394,7 @@ async function fetchEarningsDate(ticker){
 // ═══════════════════════════════════════════════════════════════════════════
 // MARKET CONTEXT — VIX + sector ETFs
 // ═══════════════════════════════════════════════════════════════════════════
-let MC={vix:null,vixDirection:null,vixChange5d:null,etfs:{},detectedRegime:'highvol_medrate'};
+let MC={vix:null,vixDirection:null,vixChange5d:null,etfs:{},etfRS:{},detectedRegime:'highvol_medrate'};
 const ETF_IDS=['SPY','QQQ','%5EVIX','XLK','XLF','XLE','XLI','XLV','XLU','XLY','XLB'];
 const ETF_EL_MAP={'SPY':'rb-spy','QQQ':'rb-qqq','%5EVIX':'rb-vix','XLK':'rb-xlk','XLF':'rb-xlf','XLE':'rb-xle','XLI':'rb-xli','XLV':'rb-xlv','XLU':'rb-xlu'};
 
@@ -1432,7 +1465,7 @@ async function loadMarketContext(){
   // Fetch VIX + all ETFs in PARALLEL — cuts step 1 time by ~70%
   const [vixResult, ...etfResultsRaw]=await Promise.all([
     fetchVIX(),
-    ...ETF_IDS.filter(t=>t!=='%5EVIX').map(async t=>({ticker:t,data:await fetchHistorical(t,30,3)}))
+    ...ETF_IDS.filter(t=>t!=='%5EVIX').map(async t=>({ticker:t,data:await fetchHistorical(t,45,3)}))
   ]);
   const vixEl=document.getElementById('rb-vix');
 
@@ -1464,6 +1497,34 @@ async function loadMarketContext(){
 
   // Process ETF results (fetched in parallel with VIX above)
   const etfResults=etfResultsRaw;
+
+  // ─── Compute multi-day Relative Strength ────────────────────────────
+  // RS = sector return − SPY return over same window (5-day and 20-day)
+  // Positive 20-day RS = sector is rotating UP (institutional money flowing in)
+  // Negative 20-day RS = sector is rotating DOWN
+  const spyResult=etfResults.find(r=>r.ticker==='SPY');
+  if(spyResult&&spyResult.data&&spyResult.data.closes&&spyResult.data.closes.length>=21){
+    const spyCloses=spyResult.data.closes;
+    const spyN=spyCloses.length;
+    const spy5d=((spyCloses[spyN-1]-spyCloses[spyN-6])/spyCloses[spyN-6])*100;
+    const spy20d=((spyCloses[spyN-1]-spyCloses[spyN-21])/spyCloses[spyN-21])*100;
+
+    etfResults.forEach(r=>{
+      if(!r.data||!r.data.closes||r.data.closes.length<21)return;
+      const c=r.data.closes;
+      const n=c.length;
+      const r5d=((c[n-1]-c[n-6])/c[n-6])*100;
+      const r20d=((c[n-1]-c[n-21])/c[n-21])*100;
+      MC.etfRS[r.ticker]={
+        rs5d:Number((r5d-spy5d).toFixed(2)),
+        rs20d:Number((r20d-spy20d).toFixed(2)),
+        abs5d:Number(r5d.toFixed(2)),
+        abs20d:Number(r20d.toFixed(2))
+      };
+    });
+    console.info('[RS] Calculated multi-day relative strength for',Object.keys(MC.etfRS).length,'ETFs');
+  }
+
   etfResults.forEach(r=>{
     if(!r.data){
       console.warn(`[ETF] Failed to fetch: ${r.ticker}`);
@@ -1575,13 +1636,37 @@ function scoreStock(s,mode){
     score+=betaPts;breakdown.push({label:'Beta',val:s.beta!=null?s.beta:'—',pts:betaPts,max:W.beta,hit:betaHit});
   }
 
-  // Sector ETF (5-day trend for swing/short/position, today for intraday)
+  // Sector ETF — combines TODAY's move AND multi-day relative strength
+  // For swing/short/position (2d+) the 20d RS matters far more than today
   const etf=getSectorETF(s.sector);
   const etfChg=etf&&MC.etfs[etf]!=null?MC.etfs[etf]:null;
+  const rsData=etf&&MC.etfRS[etf]?MC.etfRS[etf]:null;
+  const rs20d=rsData?rsData.rs20d:null;
   const sectorUp=etfChg!=null&&etfChg>0.1;
-  // Only award partial if we actually have ETF data — null means not loaded, don't reward
-  const sectorPts=etfChg==null?0:sectorUp?W.sector:Math.round(W.sector*0.3);
-  score+=sectorPts;breakdown.push({label:'Sector',val:etfChg!=null?(etfChg>=0?'+':'')+etfChg.toFixed(2)+'%':'Loading',pts:sectorPts,max:W.sector,hit:sectorUp});
+  const rotatingUp=rs20d!=null&&rs20d>0.5;   // sector outperforming SPY by >0.5% over 20d
+  const rotatingDn=rs20d!=null&&rs20d<-0.5;  // sector underperforming SPY by >0.5%
+
+  let sectorPts=0,sectorLabel='Loading';
+  if(etfChg==null){
+    sectorPts=0;sectorLabel='Loading';
+  } else if(rotatingUp&&sectorUp){
+    sectorPts=W.sector;  // full points: rotating up AND green today
+    sectorLabel=`+${etfChg.toFixed(2)}% · RS+${rs20d.toFixed(1)}`;
+  } else if(rotatingUp){
+    sectorPts=Math.round(W.sector*0.85);  // rotating up but flat today
+    sectorLabel=`${etfChg>=0?'+':''}${etfChg.toFixed(2)}% · RS+${rs20d.toFixed(1)}`;
+  } else if(sectorUp&&!rotatingDn){
+    sectorPts=Math.round(W.sector*0.6);  // green today but no 20d trend
+    sectorLabel=`+${etfChg.toFixed(2)}% · RS${rs20d!=null?(rs20d>=0?'+':'')+rs20d.toFixed(1):'—'}`;
+  } else if(rotatingDn){
+    sectorPts=0;  // sector in rotation down — no points even if green today
+    sectorLabel=`${etfChg>=0?'+':''}${etfChg.toFixed(2)}% · RS${rs20d.toFixed(1)} ⚠`;
+  } else {
+    sectorPts=Math.round(W.sector*0.3);
+    sectorLabel=`${etfChg>=0?'+':''}${etfChg.toFixed(2)}%`;
+  }
+  score+=sectorPts;
+  breakdown.push({label:'Sector',val:sectorLabel,pts:sectorPts,max:W.sector,hit:rotatingUp&&sectorUp,partial:sectorPts>0&&sectorPts<W.sector});
 
   // Earnings safety
   const de=s.daysToEarnings;
@@ -1620,6 +1705,14 @@ function scoreStock(s,mode){
   score+=trendPts;
   breakdown.push({label:'Trend',val:trendLabel,pts:trendPts,max:5,
     hit:trendPts>=5,partial:trendPts>0&&trendPts<5});
+
+  // Hidden gem bonus — +8 points if accumulation pattern detected
+  // Only matters for swing/short/position (2+ day holds) — intraday doesn't care
+  if(s.gemSignal&&mode!=='intraday'){
+    const bonus=s.gemSignal.score===5?8:5;
+    score+=bonus;
+    breakdown.push({label:'Gem',val:s.gemSignal.score+'/5 ★',pts:bonus,max:8,hit:s.gemSignal.score===5,partial:s.gemSignal.score===4});
+  }
 
   return{score:Math.min(Math.max(Math.round(score),0),100),breakdown};
 }
@@ -1805,13 +1898,26 @@ async function runScan(){
     position:`entry_time: "Pullback to 20d SMA" or specific time. exit_time: MUST be "${exitDateHints.position}" — staged exits over 4 weeks from today (${today}). Never use past dates.`
   };
 
+  // Build rotation context for the AI — which sectors are in real rotation, not just up today
+  const rotatingUp=Object.entries(MC.etfRS)
+    .filter(([,r])=>r.rs20d>0.5)
+    .map(([t,r])=>`${t}(+${r.rs20d}%)`);
+  const rotatingDn=Object.entries(MC.etfRS)
+    .filter(([,r])=>r.rs20d<-0.5)
+    .map(([t,r])=>`${t}(${r.rs20d}%)`);
+  const rotationContext=rotatingUp.length||rotatingDn.length?`
+20-DAY SECTOR ROTATION (vs SPY):
+- Rotating UP (institutional buying): ${rotatingUp.length?rotatingUp.join(', '):'none clear'}
+- Rotating DOWN (capital leaving): ${rotatingDn.length?rotatingDn.join(', '):'none clear'}
+- IMPORTANT for 2-4 week trades: STRONGLY prefer stocks in sectors rotating UP. The 20-day RS tells you where institutional money has been flowing — that trend usually persists another 2-4 weeks.`:'';
+
   // Step 2 — AI proposes 15 candidates from the full NYSE/NASDAQ universe
   const prompt=`You are an expert quantitative stock screener with full knowledge of NYSE and NASDAQ-listed equities. Today: ${today}.
 
 MARKET REGIME: ${regime.desc}
 HOLDING MODE: ${mode.label} (${mode.duration})
 MARKET CAP RANGE: ${mode.mktcap}
-SECTOR FOCUS: ${sectorNote}${watchNote}
+SECTOR FOCUS: ${sectorNote}${watchNote}${rotationContext}
 
 YOUR TASK: Propose EXACTLY 15 real, currently-listed NYSE/NASDAQ stocks that best match the regime and mode criteria below. You have full freedom to select from the entire universe — do NOT limit yourself to a predefined list. Use your knowledge of current market conditions, recent earnings, sector rotation, and momentum to identify the most relevant setups.
 
@@ -1825,7 +1931,15 @@ SELECTION CRITERIA (all must be satisfied):
 7. No earnings within ${mode.earningsAvoidDays} days — avoids binary event risk
 8. Regime fit: ${regime.desc}
 
-QUALITY SIGNALS TO PRIORITISE:
+${holding!=='intraday'?`HIDDEN GEM CRITERIA (priority for ${holding} mode):
+- Stocks making steady higher highs over 10-15 days (not parabolic spikes)
+- Outperforming SPY by 1.5%+ over 20 days (relative strength)
+- Volume rising on up days, drying on pullbacks (institutional accumulation)
+- RSI below 70 (room to run, not overheated)
+- Below 22% above 20-day SMA (avoid late-stage parabolic moves)
+These quiet accumulation patterns are more reliable for 2-4 week holds than loud breakouts.
+
+`:''}QUALITY SIGNALS TO PRIORITISE:
 - Recent earnings beat or raised guidance (last 30 days)
 - Analyst upgrades or price target increases
 - Sector ETF tailwind: ${greenSectors.length?'Today\'s green sectors: '+greenSectors.join(', '):'check sector momentum'}
@@ -1984,6 +2098,49 @@ Each object must have exactly these fields:
       daysToEarnings=await fetchEarningsDate(s.ticker);
     }
 
+    // Hidden gem detection — accumulation pattern over 10-15 trading days
+    let gemSignal=null;
+    if(hist.closes&&hist.volumes&&hist.closes.length>=21){
+      const cl=hist.closes,vol=hist.volumes,n=cl.length;
+      // Pattern 1: Steady higher highs (not spike) — current price within top 15% of 20d range, but moved up gradually
+      const last20=cl.slice(-20);
+      const max20=Math.max(...last20),min20=Math.min(...last20);
+      const range=max20-min20;
+      const posInRange=range>0?(cl[n-1]-min20)/range:0;
+      const steady=posInRange>=0.70&&posInRange<=0.98;  // near top but not exact high
+      // Pattern 2: Not parabolic — current price < 22% above SMA20
+      const sma20Local=cl.slice(-20).reduce((a,b)=>a+b,0)/20;
+      const notParabolic=cl[n-1]<sma20Local*1.22;
+      // Pattern 3: Volume drying up on pullbacks
+      // Compare avg volume on down days vs up days in last 15 sessions
+      let upVol=0,upCount=0,dnVol=0,dnCount=0;
+      for(let i=Math.max(1,n-15);i<n;i++){
+        if(cl[i]>cl[i-1]){upVol+=vol[i];upCount++;}
+        else if(cl[i]<cl[i-1]){dnVol+=vol[i];dnCount++;}
+      }
+      const avgUpVol=upCount>0?upVol/upCount:0;
+      const avgDnVol=dnCount>0?dnVol/dnCount:0;
+      const accumulating=avgUpVol>avgDnVol*1.1;  // up-day vol >10% higher than down-day vol
+      // Pattern 4: RSI not overbought (room to run)
+      const rsiOK=rsi!=null&&rsi<70;
+      // Pattern 5: Outperforming SPY over 20 days
+      let spyOutperform=false;
+      if(spyData&&spyData.closes&&spyData.closes.length>=21){
+        const sc=spyData.closes,sn=sc.length;
+        const stockReturn=((cl[n-1]-cl[n-21])/cl[n-21])*100;
+        const spyReturn=((sc[sn-1]-sc[sn-21])/sc[sn-21])*100;
+        spyOutperform=stockReturn>spyReturn+1.5; // outperforming SPY by 1.5%+
+      }
+      // Hidden gem = all 5 patterns satisfied
+      const gemScore=[steady,notParabolic,accumulating,rsiOK,spyOutperform].filter(Boolean).length;
+      if(gemScore>=4){
+        gemSignal={
+          score:gemScore,
+          steady,notParabolic,accumulating,rsiOK,spyOutperform
+        };
+      }
+    }
+
     return{
       ...s,
       price:hist.price,change_pct:hist.change_pct,
@@ -1992,6 +2149,7 @@ Each object must have exactly these fields:
       entry_price:entry,stop_loss:stop,exit_price:t1,t2_price:t2,t3_price:t3,
       stop_mult_used:stopMult,t1_mult_used:t1Mult,
       daysToEarnings,fetchedAt:hist.fetchedAt,
+      gemSignal,
       live:true
     };
   }));}catch(e){
@@ -2199,6 +2357,7 @@ function renderCards(stocks,holding,regime,totalCandidates){
           <div class="tag-row">
             <span class="sec-pill">${s.sector}</span>
             <span class="tier-pill ${s.tier.cls}">${s.tier.label}</span>
+            ${s.gemSignal?`<span class="gem-pill" title="Accumulation pattern detected: ${s.gemSignal.steady?'steady higher highs · ':''}${s.gemSignal.notParabolic?'not parabolic · ':''}${s.gemSignal.accumulating?'volume confirms · ':''}${s.gemSignal.rsiOK?'RSI has room · ':''}${s.gemSignal.spyOutperform?'outperforming SPY':''}">💎 Hidden Gem ${s.gemSignal.score}/5</span>`:''}
           </div>
         </div>
         <div class="card-right">
