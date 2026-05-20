@@ -778,15 +778,46 @@ setTimeout(()=>{
 // ═══════════════════════════════════════════════════════════════════════════
 // CLOCK
 // ═══════════════════════════════════════════════════════════════════════════
-function tick(){
+// Returns NY-local hour, minute, weekday — handles timezone & DST automatically
+function getNYTime(){
   const n=new Date();
-  document.getElementById('clk').textContent=n.toLocaleTimeString('en-US',{hour12:false});
-  document.getElementById('clk-date').textContent=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-  const day=n.getDay(),m=n.getHours()*60+n.getMinutes(),wd=day>=1&&day<=5;
+  // Use Intl.DateTimeFormat with America/New_York — correct year-round including DST
+  const parts=new Intl.DateTimeFormat('en-US',{
+    timeZone:'America/New_York',
+    hour12:false,
+    weekday:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',
+    year:'numeric',month:'short',day:'numeric'
+  }).formatToParts(n);
+  const get=t=>parts.find(p=>p.type===t)?.value;
+  const wkMap={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+  let hour=parseInt(get('hour'),10);
+  if(hour===24)hour=0; // some browsers return 24 for midnight
+  return{
+    hour,
+    minute:parseInt(get('minute'),10),
+    second:parseInt(get('second'),10),
+    weekday:wkMap[get('weekday')],
+    dateStr:`${get('weekday')}, ${get('month')} ${get('day')}, ${get('year')}`,
+    timeStr:`${String(hour).padStart(2,'0')}:${get('minute')}:${get('second')}`
+  };
+}
+
+function tick(){
+  const ny=getNYTime();
+  // Display NY time with timezone indicator so it's unambiguous
+  document.getElementById('clk').textContent=ny.timeStr+' ET';
+  document.getElementById('clk-date').textContent=ny.dateStr;
+
+  const m=ny.hour*60+ny.minute;
+  const wd=ny.weekday>=1&&ny.weekday<=5;
   const badge=document.getElementById('mkt-badge'),lbl=document.getElementById('mkt-lbl');
+
+  // NYSE/NASDAQ regular hours: 9:30 AM – 4:00 PM ET (570 – 960 minutes)
+  // Pre-market: 4:00 AM – 9:30 AM ET (240 – 570)
+  // After-hours: 4:00 PM – 8:00 PM ET (960 – 1200)
   if(wd&&m>=570&&m<960){badge.className='mkt-badge open';lbl.textContent='Market open';}
-  else if(wd&&m<570){badge.className='mkt-badge';lbl.textContent='Pre-market';}
-  else if(wd&&m>=960){badge.className='mkt-badge';lbl.textContent='After hours';}
+  else if(wd&&m>=240&&m<570){badge.className='mkt-badge';lbl.textContent='Pre-market';}
+  else if(wd&&m>=960&&m<1200){badge.className='mkt-badge';lbl.textContent='After hours';}
   else{badge.className='mkt-badge';lbl.textContent='Market closed';}
 }
 setInterval(tick,1000);tick();
@@ -1288,10 +1319,12 @@ function calcVolSurge(volumes,windowDays=1){
 // YAHOO FINANCE FETCH
 // ═══════════════════════════════════════════════════════════════════════════
 // CORS proxy pool — tried in order, falls back if one is slow/down
+// CORS proxy pool — cors-anywhere demo was deprecated in 2020
+// allorigins.win is the most reliable secondary option
 const CORS_PROXIES=[
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
-  'https://cors-anywhere.herokuapp.com/',
+  'https://api.codetabs.com/v1/proxy?quest=',
 ];
 let activeProxyIdx=0;
 const CORS=CORS_PROXIES[0]; // legacy alias for existing code
@@ -1459,7 +1492,15 @@ async function fetchVIX(){
   return{price:null,change_pct:null,source:'FAILED',sourceIndex:0,failed:true};
 }
 
+let _loadingMarketContext=false;
 async function loadMarketContext(){
+  // Prevent concurrent runs — race condition guard
+  if(_loadingMarketContext){
+    console.info('[loadMarketContext] Already running — skipping concurrent call');
+    return;
+  }
+  _loadingMarketContext=true;
+  try{
   document.getElementById('regime-auto-tag').textContent='Fetching VIX & sector data…';
 
   // Fetch VIX + all ETFs in PARALLEL — cuts step 1 time by ~70%
@@ -1578,6 +1619,9 @@ async function loadMarketContext(){
 
   renderFinvizPanel();
   renderMIP();
+  }finally{
+    _loadingMarketContext=false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1681,8 +1725,9 @@ function scoreStock(s,mode){
   // TODAY'S PRICE ACTION — was completely missing from scoring
   // A stock down hard today is NOT a momentum setup regardless of historical indicators
   const chg=s.change_pct;
+  const chgValid=chg!=null&&!isNaN(chg)&&isFinite(chg);
   let todayPts=0,todayLabel='—';
-  if(chg!=null){
+  if(chgValid){
     if(chg>=1.5){todayPts=10;todayLabel='+'+chg.toFixed(2)+'%';}
     else if(chg>=0.3){todayPts=7;todayLabel='+'+chg.toFixed(2)+'%';}
     else if(chg>=-0.3){todayPts=3;todayLabel=chg.toFixed(2)+'%';}
@@ -1851,7 +1896,8 @@ async function runScan(){
   const holding=document.getElementById('holding').value;
   const mode=MODES[holding];
   const sector=document.getElementById('sector').value;
-  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  // Use NY date — at 11pm CET it's already 5pm NY same day, but at 2am CET it's still previous day in NY
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'});
   // Pre-calculate forward date ranges so AI doesn't get them wrong
   const d=new Date();
   const fmtD=dt=>dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -2164,10 +2210,11 @@ Each object must have exactly these fields:
     const {score,breakdown}=scoreStock(s,holding);
     const de=s.daysToEarnings;
     const chgToday=s.change_pct;
+    const chgTodayValid=chgToday!=null&&!isNaN(chgToday)&&isFinite(chgToday);
     let signal=score>=75?'STRONG BUY':score>=55?'BUY':score>=35?'WATCH':'AVOID';
     // Override: hard down today = AVOID regardless of historical score
-    if(chgToday!=null&&chgToday<=-2.0&&signal!=='AVOID')signal='WATCH'; // demote
-    if(chgToday!=null&&chgToday<=-3.5)signal='AVOID';                   // hard block
+    if(chgTodayValid&&chgToday<=-2.0&&signal!=='AVOID')signal='WATCH'; // demote
+    if(chgTodayValid&&chgToday<=-3.5)signal='AVOID';                   // hard block
     if(de!=null&&de>=0&&de<=mode.earningsAvoidDays)signal='AVOID';
     const tier=getTier(score);
     return{...s,score,breakdown,signal,tier};
@@ -2213,7 +2260,8 @@ Each object must have exactly these fields:
 
   renderCards(displayStocks,holding,activeRegime,scoredCapped.length);
   const liveCount=displayStocks.filter(s=>s.live).length;
-  const scanTime=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  // Use NY timezone to match the EST label in the status — was previously using local time
+  const scanTime=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'America/New_York'});
   const wlInResults=displayStocks.filter(s=>s._fromWatchlist).length;
   const wlNote=wlInResults>0?` · ${wlInResults} from your watchlist ★`:'';
   setStatus(`✓ Top ${displayStocks.length} of ${scored.length} candidates · ${liveCount}/${displayStocks.length} live data${wlNote} · Regime: ${regime.label} · ${scanTime} EST · ${selectedModel}`);
@@ -2223,7 +2271,7 @@ Each object must have exactly these fields:
 // ═══════════════════════════════════════════════════════════════════════════
 // RENDER CARDS
 // ═══════════════════════════════════════════════════════════════════════════
-function fmt(v,dec=2){return v!=null?Number(v).toFixed(dec):'—';}
+function fmt(v,dec=2){return v!=null&&!isNaN(v)&&isFinite(v)?Number(v).toFixed(dec):'—';}
 
 function renderCards(stocks,holding,regime,totalCandidates){
   const grid=document.getElementById('grid');
